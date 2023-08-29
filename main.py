@@ -39,7 +39,7 @@ async def on_ready():
 @client.event
 async def on_member_join(member):
     await member.send(f"Добро пожаловать в клуб стримера EDEXADE, {member}!")
-    role = discord.utils.get(member.guild.roles, id=DEFAULT_ROLE)
+    role = discord.utils.get(member.guild.roles, id=DEFAULT_ROLE_ID)
     await member.add_roles(role, reason="Вход на сервер")
     print("Роль успешно выдана!")
 
@@ -94,7 +94,7 @@ async def timeout_user(*, user_id: int, guild_id: int, until):
 
 @client.command(pass_context=False)
 async def mute(ctx: commands.Context, member: discord.Member, until: int):
-    if ctx.author.id != MY_ROLE:
+    if ctx.author.id != ADMIN_USER_ID:
         await ctx.send("Атятя")
         return
     handshake = await timeout_user(
@@ -114,7 +114,7 @@ async def version(ctx: commands.Context):
 
 @client.command(pass_context=False)
 async def mute_micro(ctx: commands.Context, member: discord.Member):
-    if ctx.author.id != MY_ROLE:
+    if ctx.author.id != ADMIN_USER_ID:
         await ctx.send("Атятя")
         return
     try:
@@ -126,7 +126,7 @@ async def mute_micro(ctx: commands.Context, member: discord.Member):
 
 @client.command(pass_context=False)
 async def unmute_micro(ctx: commands.Context, member: discord.Member):
-    if ctx.author.id != MY_ROLE:
+    if ctx.author.id != ADMIN_USER_ID:
         await ctx.send("Атятя")
         return
     try:
@@ -138,7 +138,7 @@ async def unmute_micro(ctx: commands.Context, member: discord.Member):
 
 @client.command(pass_context=False)
 async def ban(ctx: commands.Context, member: discord.Member, *, reason: str = ""):
-    if ctx.author.id != MY_ROLE:
+    if ctx.author.id != ADMIN_USER_ID:
         await ctx.send("Атятя")
         return
     try:
