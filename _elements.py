@@ -5,7 +5,7 @@ class ViewWithButtons(discord.ui.View):
     message = None
     on_play = None
 
-    def __init__(self, ctx, music, *, timeout=60, on_play) -> None:
+    def __init__(self, ctx, music, *, timeout=60) -> None:
         super().__init__(timeout=timeout)
         self.context = ctx
         self.music = music

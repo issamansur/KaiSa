@@ -1,0 +1,6 @@
+aiohttp
+vkpymusic
+discord
+discord[voice]
+youtube_dl
+PyNaCl
