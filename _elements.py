@@ -1,7 +1,8 @@
-import discord
+from discord import Interaction, ButtonStyle
+from discord.ui import View, Button, button
 
 
-class ViewWithButtons(discord.ui.View):
+class ViewWithButtons(View):
     message = None
     on_play = None
 
@@ -19,29 +20,29 @@ class ViewWithButtons(discord.ui.View):
         await self.message.edit(view=self)
 
     @staticmethod
-    def change(button: discord.ui.Button, result: bool):
+    def change(button: Button, result: bool):
         if result:
             button.emoji = "✅"
             button.label = "Success"
-            button.style = discord.ButtonStyle.success
+            button.style = ButtonStyle.success
             button.disabled = True
         else:
             button.emoji = "🔄"
             button.label = "Try again"
-            button.style = discord.ButtonStyle.secondary
+            button.style = ButtonStyle.secondary
 
-    @discord.ui.button(label="Play", style=discord.ButtonStyle.primary, emoji="🎵")
+    @button(label="Play", style=ButtonStyle.primary, emoji="🎵")
     async def play_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: Interaction, button: Button
     ):
         await interaction.response.defer()
         result = await self.on_play(self.context, self.music)
         self.change(button, result)
         await interaction.followup.edit_message(self.message.id, view=self)
 
-    @discord.ui.button(label="Save", style=discord.ButtonStyle.primary, emoji="⬇")
+    @button(label="Save", style=ButtonStyle.primary, emoji="⬇")
     async def save_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: Interaction, button: Button
     ):
         result = True
         try:
