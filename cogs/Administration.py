@@ -1,4 +1,4 @@
-from discord import utils, Status, Activity, ActivityType, Member
+from discord import utils, Member
 from discord.ext.commands import Cog, command, Context
 
 from .Settings import *
@@ -20,35 +20,6 @@ class Administration(Cog):
         role = utils.get(member.guild.roles, id=DEFAULT_ROLE_ID)
         await member.add_roles(role, reason="Вход на сервер")
         print("Роль успешно выдана!")
-
-    @Cog.listener()
-    async def on_message(self, message):
-        if message.author == self.client.user:
-            return
-
-        text = message.content
-        words = text.split()
-        author = message.author
-        channel = message.channel
-
-        if f"<@{ADMIN_USER_ID}>" in text:
-            await message.channel.send(
-                f"<@{message.author.id}>, Владелец заблокировал функцию упоминания."
-            )
-            await message.delete()
-            return
-
-        if str(words[0]).lower() in actions:
-            try:
-                member = await self.client.fetch_user(words[1][2:-1])
-                await channel.send(
-                    f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
-                )
-            except Exception as e:
-                await channel.send(f"Something went wrong: {e}")
-            return
-
-        await self.client.process_commands(message)
 
     # ------------------------------------------------------------
 
@@ -72,7 +43,7 @@ class Administration(Cog):
     @command(pass_context=False)
     async def mute(self, ctx: Context, member: Member, until: int):
         if ctx.author.id != ADMIN_USER_ID:
-            await ctx.send("Атятя")
+            await ctx.send("Ля ты криса...")
             return
         handshake = await self.timeout_user(
             user_id=member.id, guild_id=ctx.guild.id, until=until
@@ -84,13 +55,9 @@ class Administration(Cog):
         await ctx.send("Something went wrong")
 
     @command(pass_context=False)
-    async def version(self, ctx: Context):
-        await ctx.send("1.0.1")
-
-    @command(pass_context=False)
     async def mute_micro(self, ctx: Context, member: Member):
         if ctx.author.id != ADMIN_USER_ID:
-            await ctx.send("Атятя")
+            await ctx.send("Ля ты криса...")
             return
         try:
             await member.edit(mute=True)
@@ -101,7 +68,7 @@ class Administration(Cog):
     @command(pass_context=False)
     async def unmute_micro(self, ctx: Context, member: Member):
         if ctx.author.id != ADMIN_USER_ID:
-            await ctx.send("Атятя")
+            await ctx.send("Ля ты криса...")
             return
         try:
             await member.edit(mute=False)
@@ -112,14 +79,12 @@ class Administration(Cog):
     @command(pass_context=False)
     async def ban(self, ctx: Context, member: Member, *, reason: str = ""):
         if ctx.author.id != ADMIN_USER_ID:
-            await ctx.send("Атятя")
+            await ctx.send("Ля ты криса...")
             return
         try:
             await ctx.guild.ban(user=member, reason=reason)
             await ctx.send(f"Successfully ban user {member}.")
         except Exception as e:
             await ctx.send(f"Something went wrong: {e}")
+    
 
-    @command(pass_context=True, brief="This check a status of the bot", aliases=["bot"])
-    async def b(self, ctx):
-        await ctx.send(ANSWERS.GREETING)
