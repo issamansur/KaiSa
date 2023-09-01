@@ -4,17 +4,17 @@ import datetime
 import asyncio
 import aiohttp
 
-from vkpymusic import TokenReceiver, Service, Music
+from vkpymusic import TokenReceiver, Service, Song
 
 import discord
 from discord.ext import commands
 from youtube_dl import YoutubeDL
 
 from _elements import ViewWithButtons
-from actions import *
-from answers import ANSWERS
-from ids import *
+from cogs.source.actions import *
+from cogs.source.answers import ANSWERS
 
+from cogs.Administration import Administration
 
 client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
@@ -29,9 +29,13 @@ FFMPEG_OPTIONS = {
 }
 
 
+# -------------------------------------------------------
+
+
 @client.event
 async def on_ready():
     print(f"Has logged in as {client.user}")
+    await client.add_cog(Administration(client))
     await client.change_presence(
         status=discord.Status.dnd,
         activity=discord.Activity(
@@ -41,129 +45,6 @@ async def on_ready():
     )
 
 
-@client.event
-async def on_member_join(member):
-    await member.send(f"Добро пожаловать в клуб стримера EDEXADE, {member}!")
-    role = discord.utils.get(member.guild.roles, id=DEFAULT_ROLE_ID)
-    await member.add_roles(role, reason="Вход на сервер")
-    print("Роль успешно выдана!")
-
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    text = message.content
-    words = text.split()
-    author = message.author
-    channel = message.channel
-
-    if f"<@{ADMIN_USER_ID}>" in text:
-        await message.channel.send(
-            f"<@{message.author.id}>, Владелец заблокировал функцию упоминания."
-        )
-        await message.delete()
-
-    if str(words[0]).lower() in actions:
-        try:
-            member = await client.fetch_user(words[1][2:-1])
-            await channel.send(
-                f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
-            )
-        except Exception as e:
-            await channel.send(f"Something went wrong: {e}")
-
-    else:
-        await client.process_commands(message)
-
-
-# ------------------------------------------------------------
-
-
-async def timeout_user(*, user_id: int, guild_id: int, until):
-    headers = {"Authorization": f"Bot {client.http.token}"}
-    url = f"https://discord.com/api/v9/guilds/{guild_id}/members/{user_id}"
-    timeout = (
-        datetime.datetime.utcnow() + datetime.timedelta(minutes=until)
-    ).isoformat()
-    json = {"communication_disabled_until": timeout}
-    client.session = aiohttp.ClientSession()
-    async with client.session.patch(url, json=json, headers=headers) as session:
-        status = session.status
-        await client.session.close()
-        if status in range(200, 299):
-            return True
-        return False
-
-
-@client.command(pass_context=False)
-async def mute(ctx: commands.Context, member: discord.Member, until: int):
-    if ctx.author.id != ADMIN_USER_ID:
-        await ctx.send("Атятя")
-        return
-    handshake = await timeout_user(
-        user_id=member.id, guild_id=ctx.guild.id, until=until
-    )
-    if handshake:
-        return await ctx.send(
-            f"Successfully timed out user {member} for {until} minutes."
-        )
-    await ctx.send("Something went wrong")
-
-
-@client.command(pass_context=False)
-async def version(ctx: commands.Context):
-    await ctx.send("1.0.1")
-
-
-@client.command(pass_context=False)
-async def mute_micro(ctx: commands.Context, member: discord.Member):
-    if ctx.author.id != ADMIN_USER_ID:
-        await ctx.send("Атятя")
-        return
-    try:
-        await member.edit(mute=True)
-        await ctx.send(f"Successfully mute micro of user {member}.")
-    except Exception as e:
-        await ctx.send(f"Something went wrong: {e}")
-
-
-@client.command(pass_context=False)
-async def unmute_micro(ctx: commands.Context, member: discord.Member):
-    if ctx.author.id != ADMIN_USER_ID:
-        await ctx.send("Атятя")
-        return
-    try:
-        await member.edit(mute=False)
-        await ctx.send(f"Successfully unmute micro of user {member}.")
-    except Exception as e:
-        await ctx.send(f"Something went wrong: {e}")
-
-
-@client.command(pass_context=False)
-async def ban(ctx: commands.Context, member: discord.Member, *, reason: str = ""):
-    if ctx.author.id != ADMIN_USER_ID:
-        await ctx.send("Атятя")
-        return
-    try:
-        await ctx.guild.ban(user=member, reason=reason)
-        await ctx.send(f"Successfully ban user {member}.")
-    except Exception as e:
-        await ctx.send(f"Something went wrong: {e}")
-
-
-# -------------------------------------------------------
-
-
-@client.command(
-    pass_context=True, brief="This check a status of the bot", aliases=["bot"]
-)
-async def b(ctx):
-    await ctx.send(ANSWERS.GREETING)
-
-
-# -------------------------------------------------------
 async def is_chat(ctx):
     user = ctx.message.author
     try:
@@ -204,23 +85,23 @@ async def join(ctx):
 )
 async def s(ctx, *, text: str):
     await ctx.channel.send(ANSWERS.ON_SEARCH)
-    musics = service.search(text)
+    songs = service.search(text)
 
-    if len(musics) == 0:
+    if len(songs) == 0:
         await ctx.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)
         return
-    
+
     await ctx.channel.send(ANSWERS.ON_TRACKS_FOUND)
 
-    for music in musics:
-        view: ViewWithButtons = ViewWithButtons(ctx, music)
+    for song in songs:
+        view: ViewWithButtons = ViewWithButtons(ctx, song)
         view.on_play = add_track
 
         view.message = await ctx.channel.send(
             f"""```
-Название: {music.title}
-Исполнитель: {music.artist}
-Длительность: {music.duration}
+Название: {song.title}
+Исполнитель: {song.artist}
+Длительность: {song.duration}
 ```
     """,
             view=view,
@@ -233,9 +114,9 @@ async def s(ctx, *, text: str):
 async def l(ctx):
     if not await is_chat(ctx):
         return
-    
-    guild: dict[int: dict] = guilds.get(ctx.guild.id, {})
-    queue: list[Music] = guild.get("queue", [])
+
+    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+    queue: list[Song] = guild.get("queue", [])
 
     if len(queue) == 0:
         await ctx.channel.send(ANSWERS.ON_LIST_EMPTY)
@@ -246,24 +127,23 @@ async def l(ctx):
         await ctx.channel.send(f"```> Список:\n{queue_list}```")
 
 
-def play(ctx, voice, music: Music):
-    guild: dict[int: dict] = guilds.get(ctx.guild.id, {})
-    queue: list[Music] = guild.get("queue", [])
+def play(ctx, voice, song: Song):
+    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+    queue: list[Song] = guild.get("queue", [])
 
     if len(queue) != 0:
-        music = Music.safe(queue[0])
-        file_name = f"{music}.mp3"
-        file_path = os.path.join("Music", file_name)
+        song = Song.safe(queue[0])
+        file_name = f"{song}.mp3"
+        file_path = os.path.join("Song", file_name)
 
-        source_path: str = ''
+        source_path: str = ""
         if os.path.isfile(file_path):
             print(f"File found: {file_name}")
             source_path = file_path
         else:
             print(f"File not found: {file_name}")
-            source_path=music.url
+            source_path = song.url
 
-        
         client_voice: discord.VoiceClient = voice
         client_voice.play(
             discord.FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
@@ -271,35 +151,35 @@ def play(ctx, voice, music: Music):
         )
 
         if os.path.isfile(file_path):
-            service.save_music(music)
-        return music
+            service.save_song(song)
+        return song
 
 
-async def next(ctx, client_voice):
-    guild: dict[int: dict] = guilds.get(ctx.guild.id, {})
-    queue: list[Music] = guild.get("queue", [])
+def next(ctx):
+    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+    queue: list[Song] = guild.get("queue", [])
     is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
 
-    if is_repeat == 'off':
+    if is_repeat == "off":
         queue.pop()
-    elif is_repeat == 'one':
+    elif is_repeat == "one":
         pass
-    elif is_repeat == 'all':
+    elif is_repeat == "all":
         queue.append(queue.pop(0))
 
-
     if len(queue) == 0:
-        await ctx.channel.send(ANSWERS.ON_END)
+        pass
+        # await ctx.channel.send(ANSWERS.ON_END)
     else:
-        music: Music = queue[0]
-        await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {music}"))
-        play(ctx, client_voice, music)
+        song: Song = queue[0]
+        # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))
+        play(ctx, song)
 
 
-async def add_track(ctx, music):
+async def add_track(ctx, song):
     if not await is_chat(ctx):
         return
-    
+
     client_voice: discord.VoiceClient = ctx.voice_client
     user_voice: discord.VoiceClient = ctx.author.voice
 
@@ -310,21 +190,18 @@ async def add_track(ctx, music):
             await ctx.send(ANSWERS.JUST_BUSY)
             return False
     else:
-        print(0)
         client_voice = await join(ctx)
-        print(1)
         if not client_voice:
             return False
 
     print(2)
-    guild: dict[int: dict] = guilds.setdefault(ctx.guild.id, {})
+    guild: dict[int:dict] = guilds.setdefault(ctx.guild.id, {})
     is_repeat: str = guild.setdefault("is_repeat", "off")
-    queue: list[Music] = guild.get("queue", [])
+    queue: list[Song] = guild.get("queue", [])
     k: int = len(queue)
 
     if k < 15:
-        print(3)
-        queue.append(music)
+        queue.append(song)
         await ctx.channel.send(ANSWERS.__f(f"Трек добавлен в очередь! ({k + 1}/15)"))
     else:
         await ctx.channel.send(ANSWERS.ON_LIST_FULL)
@@ -343,7 +220,7 @@ async def add_track(ctx, music):
 async def skip(ctx):
     if not await is_chat(ctx):
         return
-    
+
     client_voice: discord.VoiceClient = ctx.voice_client
     user_voice = discord.VoiceClient = ctx.author.voice
 
@@ -358,17 +235,17 @@ async def skip(ctx):
 
 
 @client.command()
-async def r(ctx, repeat_type:str):
+async def r(ctx, repeat_type: str):
     if not await is_chat(ctx):
         return
-    
+
     client_voice: discord.VoiceClient = ctx.voice_client
     user_voice = discord.VoiceClient = ctx.author.voice
 
     if client_voice and client_voice.is_connected():
         if user_voice and client_voice.channel.id == user_voice.channel.id:
             is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
-            if repeat_type in ['one', 'all', 'off']:
+            if repeat_type in ["one", "all", "off"]:
                 guilds[ctx.guild.id]["is_repeat"] = repeat_type
             else:
                 await ctx.send(ANSWERS.INVALID_REPEAT_TYPE)
@@ -386,7 +263,7 @@ async def r(ctx, repeat_type:str):
 async def q(ctx):
     if not await is_chat(ctx):
         return
-    
+
     client_voice: discord.VoiceClient = ctx.voice_client
     user_voice = discord.VoiceClient = ctx.author.voice
 
@@ -400,7 +277,9 @@ async def q(ctx):
     else:
         await ctx.send(ANSWERS.NO_VOICE_BOT)
 
+
 # YOUTUBE
+
 
 @client.command(
     pass_context=True,
@@ -442,4 +321,3 @@ async def yt(ctx, url):
 
 
 client.run()
-input()
