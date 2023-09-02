@@ -1,13 +1,24 @@
+from ctypes import Union
+import os
+
 from discord import VoiceClient, FFmpegPCMAudio
-from ext.commands import Cog, command, Context
+from discord.ext.commands import (
+    Context,
+    Cog,
+    Context,
+    command,
+    guild_only,
+)
+import youtube_dl
+
+from vkpymusic import TokenReceiver, Service, Song
 
 from .Settings import *
 from .source.actions import *
 from .source.answers import *
 
-from vkpymusic import TokenReceiver, Service, Song
 
-from ..elements.Views import ViewForSong, ViewForPlaylist 
+from .elements.Views import ViewForSong, ViewForPlaylist
 
 
 FFMPEG_OPTIONS = {
@@ -15,7 +26,8 @@ FFMPEG_OPTIONS = {
     "options": "-vn",
 }
 
-guilds: dict[int:dict] = None
+guilds: dict[int:dict] = {}
+
 
 async def is_chat(ctx):
     user = ctx.message.author
@@ -27,11 +39,24 @@ async def is_chat(ctx):
         return False
 
 
-async def is_registered(guild_id: int)->bool:
-    if guild_id in guilds.keys():
+async def is_registered(ctx: Context) -> bool:
+    if guilds.get(ctx.guild.id, {}).get("Service", None) != None:
         return True
     else:
+        await ctx.send(ANSWERS.NO_SERVICE)
         return False
+
+
+def get_service(ctx: Context) -> Service or None:
+    return guilds.get(ctx.guild.id, {}).get("Service", None)
+
+
+def get_queue(ctx: Context) -> Service:
+    return guilds[ctx.guild.id]["Queue"]
+
+
+def get_is_repeat(ctx: Context) -> Service:
+    return guilds[ctx.guild.id]["is_repeat"]
 
 
 async def join(ctx):
@@ -76,7 +101,7 @@ async def add_track(ctx, song):
     guild: dict[int:dict] = guilds.setdefault(ctx.guild.id, {})
 
     service: dict
-    queue: list[Song] = guild.get("queue", [])
+    queue: list[Song] = guild.get("Queue", [])
     is_repeat: str = guild.setdefault("is_repeat", "off")
     k: int = len(queue)
 
@@ -96,12 +121,84 @@ async def add_track(ctx, song):
     return True
 
 
+async def save(ctx, music):
+    return
+
+
+# ---------------------------------------------
+def play(ctx: Context, voice, song: Song):
+    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+    queue: list[Song] = guild.get("Queue", [])
+
+    if len(queue) != 0:
+        song = Song.safe(queue[0])
+        file_name = f"{song}.mp3"
+        file_path = os.path.join("Song", file_name)
+
+        source_path: str = ""
+        if os.path.isfile(file_path):
+            print(f"File found: {file_name}")
+            source_path = file_path
+        else:
+            print(f"File not found: {file_name}")
+            source_path = song.url
+
+        client_voice: VoiceClient = voice
+        client_voice.play(
+            FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
+            after=lambda _: next(ctx, client_voice),
+        )
+
+        if os.path.isfile(file_path):
+            get_service(ctx.guild.id).save_song(song)
+        return song
+
+
+def next(ctx):
+    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+    queue: list[Song] = guilds[ctx.guild.id]["Queue"]
+    is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
+
+    if is_repeat == "off":
+        queue.pop()
+    elif is_repeat == "one":
+        pass
+    elif is_repeat == "all":
+        queue.append(queue.pop(0))
+    guilds.get(ctx.guild.id, {})
+
+    if len(queue) == 0:
+        # await ctx.channel.send(ANSWERS.ON_END)
+        return
+
+    song: Song = queue[0]
+    # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))
+    play(ctx, song)
+
+
+# ---------------------------------------------
 class Voice(Cog):
     # ctor
     def __init__(self, bot):
         self.client = bot
-        self.service = Service.parse_config()
 
+    async def is_registered(self, guild_id: int) -> bool:
+        if guilds.get(guild_id, {}).get("Service", None) != None:
+            return True
+        else:
+            return False
+
+    async def set_service(self, guild_id: int, service: Service):
+        guilds.setdefault(guild_id, {})
+        guilds[guild_id]["Service"] = service
+        guilds[guild_id]["is_repeat"] = "off"
+        guilds[guild_id]["Queue"] = []
+
+    @command()
+    async def services(self, ctx):
+        if not await is_chat(ctx):
+            return
+        await ctx.send(guilds)
 
     @command(
         pass_context=True,
@@ -109,8 +206,13 @@ class Voice(Cog):
         aliases=["search"],
     )
     async def s(self, ctx, *, text: str):
+        if not await is_chat(ctx):
+            return
+        if not await is_registered(ctx):
+            return
+
         await ctx.channel.send(ANSWERS.ON_SEARCH)
-        songs = self.service.search(text)
+        songs = get_service(ctx).search(text)
 
         if len(songs) == 0:
             await ctx.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)
@@ -125,8 +227,7 @@ class Voice(Cog):
             view.on_save = save
 
             view.message = await ctx.channel.send(
-                
-f"""```
+                f"""```
 Название: {song.title}
 Исполнитель: {song.artist}
 Длительность: {song.duration}
@@ -135,18 +236,15 @@ f"""```
                 view=view,
             )
 
-
-    @command(
-        pass_context=True, 
-        brief="This show list/queue of songs", 
-        aliases=["list"]
-    )
-    async def l(ctx):
+    @command(pass_context=True, brief="This show list/queue of songs", aliases=["list"])
+    async def l(self, ctx):
         if not await is_chat(ctx):
+            return
+        if not await is_registered(ctx):
             return
 
         guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
-        queue: list[Song] = guild.get("queue", [])
+        queue: list[Song] = guild.get("Queue", [])
 
         if len(queue) == 0:
             await ctx.channel.send(ANSWERS.ON_LIST_EMPTY)
@@ -156,59 +254,11 @@ f"""```
                 queue_list += f"{i}. {track}\n"
             await ctx.channel.send(f"```> Список:\n{queue_list}```")
 
-
-    def play(ctx, voice, song: Song):
-        guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
-        queue: list[Song] = guild.get("queue", [])
-
-        if len(queue) != 0:
-            song = Song.safe(queue[0])
-            file_name = f"{song}.mp3"
-            file_path = os.path.join("Song", file_name)
-
-            source_path: str = ""
-            if os.path.isfile(file_path):
-                print(f"File found: {file_name}")
-                source_path = file_path
-            else:
-                print(f"File not found: {file_name}")
-                source_path = song.url
-
-            client_voice: VoiceClient = voice
-            client_voice.play(
-                FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
-                after=lambda _: next(ctx, client_voice),
-            )
-
-            if os.path.isfile(file_path):
-                service.save_song(song)
-            return song
-
-
-    def next(ctx):
-        guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
-        queue: list[Song] = guild.get("queue", [])
-        is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
-
-        if is_repeat == "off":
-            queue.pop()
-        elif is_repeat == "one":
-            pass
-        elif is_repeat == "all":
-            queue.append(queue.pop(0))
-
-        if len(queue) == 0:
-            pass
-            # await ctx.channel.send(ANSWERS.ON_END)
-        else:
-            song: Song = queue[0]
-            # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))
-            play(ctx, song)
-
-
-    @client.command(pass_context=True, brief="This will skip current song", aliases=["sk"])
-    async def skip(ctx):
+    @command(pass_context=True, brief="This will skip current song", aliases=["sk"])
+    async def skip(self, ctx):
         if not await is_chat(ctx):
+            return
+        if not await is_registered(ctx):
             return
 
         client_voice: VoiceClient = ctx.voice_client
@@ -223,10 +273,11 @@ f"""```
         else:
             await ctx.send(ANSWERS.NO_VOICE_BOT)
 
-
-    @client.command()
-    async def r(ctx, repeat_type: str):
+    @command()
+    async def r(self, ctx, repeat_type: str):
         if not await is_chat(ctx):
+            return
+        if not await is_registered(ctx):
             return
 
         client_voice: VoiceClient = ctx.voice_client
@@ -244,14 +295,15 @@ f"""```
         else:
             await ctx.send(ANSWERS.NO_VOICE_BOT)
 
-
     @command(
         pass_context=True,
         brief="Makes the bot leave/quit your channel",
         aliases=["quit"],
     )
-    async def q(ctx):
+    async def q(self, ctx):
         if not await is_chat(ctx):
+            return
+        if not await is_registered(ctx):
             return
 
         client_voice: VoiceClient = ctx.voice_client
@@ -267,16 +319,14 @@ f"""```
         else:
             await ctx.send(ANSWERS.NO_VOICE_BOT)
 
-
     # YOUTUBE
-
 
     @command(
         pass_context=True,
         brief="This will play audio from youtube url",
         aliases=["youtube"],
     )
-    async def yt(ctx, url):
+    async def yt(self, ctx, url):
         if not await is_chat(ctx):
             return
         client_voice: VoiceClient = ctx.voice_client
@@ -297,7 +347,7 @@ f"""```
 
         YDL_OPTIONS = {"format": "bestaudio", "noplaylist": "True"}
 
-        with YoutubeDL(YDL_OPTIONS) as ydl:
+        with youtube_dl(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(url, download=False)
         URL = info["formats"][0]["url"]
         client_voice.play(FFmpegPCMAudio(source=URL, **FFMPEG_OPTIONS))

@@ -86,5 +86,3 @@ class Administration(Cog):
             await ctx.send(f"Successfully ban user {member}.")
         except Exception as e:
             await ctx.send(f"Something went wrong: {e}")
-    
-
