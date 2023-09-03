@@ -1,5 +1,5 @@
 from discord import utils, Member
-from discord.ext.commands import Cog, command, Context
+from discord.ext.commands import Cog, command, Context, is_owner
 
 from .Settings import *
 from .source.actions import *

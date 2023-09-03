@@ -1,5 +1,9 @@
 from discord import Interaction, ButtonStyle
 from discord.ui import View, Button, button
+from discord.ext.commands import Context
+
+from vkpymusic import Song, Playlist
+
 
 def change(button: Button, result: int):
     if result == 1:
@@ -7,7 +11,7 @@ def change(button: Button, result: int):
         button.label = "Success"
         button.style = ButtonStyle.success
         button.disabled = True
-    
+
     if result == 0:
         button.emoji = "⏳"
         button.label = "Loading..."
@@ -26,11 +30,10 @@ class ViewForSong(View):
     on_play = None
     on_save = None
 
-
     def __init__(self, ctx, music, *, timeout=10) -> None:
         super().__init__(timeout=timeout)
-        self.context = ctx
-        self.music = music
+        self.context: Context = ctx
+        self.music: Song = music
 
     async def on_timeout(self) -> None:
         for item in self.children:
@@ -40,29 +43,23 @@ class ViewForSong(View):
 
         await self.message.edit(view=self)
 
-
     @button(label="Play song", style=ButtonStyle.primary, emoji="🎵")
-    async def play_button(
-        self, interaction: Interaction, button: Button
-    ):
+    async def play_button(self, interaction: Interaction, button: Button):
         change(button, 0)
-        await interaction.response.edit_message(view=self)
+        await self.message.edit(view=self)
 
-        await interaction.response.defer()
+        await interaction.response.defer(thinking=True)
 
         try:
-            await self.on_play(self.music)
+            await self.on_play(self.context, self.music)
             change(button, 1)
         except:
             change(button, -1)
 
         await interaction.followup.edit_message(self.message.id, view=self)
 
-
     @button(label="Download", style=ButtonStyle.primary, emoji="⬇")
-    async def save_button(
-        self, interaction: Interaction, button: Button
-    ):
+    async def save_button(self, interaction: Interaction, button: Button):
         change(button, 0)
         await interaction.response.edit_message(view=self)
 
@@ -96,11 +93,8 @@ class ViewForPlaylist(View):
 
         await self.message.edit(view=self)
 
-
     @button(label="Play album", style=ButtonStyle.primary, emoji="🎵")
-    async def play_button(
-        self, interaction: Interaction, button: Button
-    ):
+    async def play_button(self, interaction: Interaction, button: Button):
         change(button, 0)
         await interaction.response.edit_message(view=self)
 
@@ -114,11 +108,8 @@ class ViewForPlaylist(View):
 
         await interaction.followup.edit_message(self.message.id, view=self)
 
-
     @button(label="Show songs", style=ButtonStyle.primary, emoji="🔍")
-    async def show_button(
-        self, interaction: Interaction, button: Button
-    ):
+    async def show_button(self, interaction: Interaction, button: Button):
         change(button, 0)
         await interaction.response.edit_message(view=self)
 

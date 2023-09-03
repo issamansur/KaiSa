@@ -1,14 +1,10 @@
 from ctypes import Union
+import io
 import os
+import aiohttp
 
-from discord import VoiceClient, FFmpegPCMAudio
-from discord.ext.commands import (
-    Context,
-    Cog,
-    Context,
-    command,
-    guild_only,
-)
+from discord import File, VoiceClient, FFmpegPCMAudio
+from discord.ext.commands import Context, Cog, Context, command, is_owner
 import youtube_dl
 
 from vkpymusic import TokenReceiver, Service, Song
@@ -121,7 +117,12 @@ async def add_track(ctx, song):
     return True
 
 
-async def save(ctx, music):
+async def save(ctx, music: Song):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(music.url) as resp:
+            song = await resp.read()
+            with io.BytesIO(song) as file:
+                await ctx.channel.send(f"{music}", file=File(file, "{music}.mp3"))
     return
 
 
@@ -133,7 +134,7 @@ def play(ctx: Context, voice, song: Song):
     if len(queue) != 0:
         song = Song.safe(queue[0])
         file_name = f"{song}.mp3"
-        file_path = os.path.join("Song", file_name)
+        file_path = os.path.join("Musics", file_name)
 
         source_path: str = ""
         if os.path.isfile(file_path):
@@ -182,6 +183,7 @@ class Voice(Cog):
     def __init__(self, bot):
         self.client = bot
 
+    # for Auth.py
     async def is_registered(self, guild_id: int) -> bool:
         if guilds.get(guild_id, {}).get("Service", None) != None:
             return True
@@ -195,6 +197,7 @@ class Voice(Cog):
         guilds[guild_id]["Queue"] = []
 
     @command()
+    @is_owner()
     async def services(self, ctx):
         if not await is_chat(ctx):
             return
@@ -212,7 +215,7 @@ class Voice(Cog):
             return
 
         await ctx.channel.send(ANSWERS.ON_SEARCH)
-        songs = get_service(ctx).search(text)
+        songs = get_service(ctx).search_songs_by_text(text)
 
         if len(songs) == 0:
             await ctx.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)

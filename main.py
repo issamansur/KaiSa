@@ -4,7 +4,17 @@ import datetime
 import asyncio
 import aiohttp
 
-from discord import Intents, Message, utils, Status, Activity, ActivityType
+from discord import (
+    Intents,
+    Message,
+    utils,
+    Status,
+    Activity,
+    ActivityType,
+    app_commands,
+    Object,
+)
+
 from discord.ext import commands
 from youtube_dl import YoutubeDL
 
@@ -18,25 +28,41 @@ from cogs.Auth import Auth
 
 client = commands.Bot(command_prefix="!", intents=Intents.all())
 
-
 # -------------------------------------------------------
+s1 = Status.dnd
+a1 = Activity(
+    type=ActivityType.watching,
+    name="Hentai 🤤🔞",
+)
+
+s2 = Status.online
+a2 = Activity(
+    type=ActivityType.playing,
+    name="League of Legends",
+)
 
 
 @client.event
 async def on_ready():
     print(f"Has logged in as {client.user}")
+    for server in client.guilds:
+        await client.tree.sync(guild=Object(id=server.id))
 
     await client.add_cog(Administration(client))
     await client.add_cog(Voice(client))
     await client.add_cog(Auth(client))
 
     await client.change_presence(
-        status=Status.dnd,
-        activity=Activity(
-            type=ActivityType.watching,
-            name="Hentai 🤤🔞",
-        ),
+        status=s2,
+        activity=a2,
     )
+
+
+@client.tree.command(
+    name="testtest", description="Test to see if slash commands are working"
+)
+async def test(interaction):
+    await interaction.response.send_message("Test")
 
 
 @client.event
@@ -67,7 +93,21 @@ async def on_message(message: Message):
     await client.process_commands(message)
 
 
+@client.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    raise error
+
+
+@commands.is_owner()
+@client.command(pass_context=False)
+async def reload(ctx: commands.Context):
+    await client.close()
+
+
 # --------------------------------------------------------------------------
 
 
 client.run()
+# os.system(f"start cmd /k python main.py")

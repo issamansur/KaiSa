@@ -1,10 +1,7 @@
-import asyncio
 import io
-import json
-import os
 import aiohttp
 
-from discord import VoiceClient, FFmpegPCMAudio, ChannelType, File
+from discord import File
 from discord.ext.commands import (
     Bot,
     Context,
@@ -13,10 +10,8 @@ from discord.ext.commands import (
     command,
     has_permissions,
 )
-import requests
-import youtube_dl
 
-from vkpymusic import TokenReceiver, Service, Song
+from vkpymusic import TokenReceiverAsync, Service, Song
 
 from .Voice import Voice
 
@@ -35,10 +30,11 @@ async def is_dm(ctx: Context):
 
 # ---------------------------------------------
 class Auth(Cog):
-    # ctor
+    ### constructor
     def __init__(self, bot):
         self.client: Bot = bot
 
+    ### !register
     @has_permissions(administrator=True)
     @command(
         pass_context=True,
@@ -69,6 +65,8 @@ class Auth(Cog):
             voice: Voice = self.client.get_cog("Voice")
             await voice.set_service(guild_id, service)
 
+    ### 4 handlers and !auth
+    # handler_1 (captcha image)
     async def on_captcha_handler(self, ctx, url: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -76,7 +74,7 @@ class Auth(Cog):
                 with io.BytesIO(img) as file:
                     await ctx.channel.send(file=File(file, "captcha.png"))
 
-        await ctx.send("Введите капчу:\n```!captcha <капча>````")
+        await ctx.send("Введите капчу:\n" + "```!captcha <капча>```")
 
         msg = await self.client.wait_for(
             "message",
@@ -89,8 +87,9 @@ class Auth(Cog):
         captcha_key: str = msg.content.split(" ")[-1]
         return captcha_key
 
+    # handler_2 (2fa SMS OR VK code)
     async def on_2fa_handler(self, ctx) -> str:
-        await ctx.send("Введите код из СМС:\n```!code <код>```")
+        await ctx.send("Введите код из СМС:\n" + "```!code <код>```")
 
         msg = await self.client.wait_for(
             "message",
@@ -103,23 +102,27 @@ class Auth(Cog):
         code: str = msg.content.split(" ")[-1]
         return code
 
+    # handler_3 (invalid login or password)
     async def on_invalid_client_handler(self, ctx):
         await ctx.send("Неверный логин или пароль, попробуйте ещё раз...")
 
+    # handler_4 (unexpected error)
     async def on_critical_error_handler(self, ctx, obj):
-        await ctx.send(f"Критическая ошибка! \n{obj}")
+        await ctx.send("Критическая ошибка!\n" + f"```{obj}```")
 
+    # !auth
     @command()
     async def auth(self, ctx: Context, guild_id: int, login: str, password: str):
         if not await is_dm(ctx):
             await ctx.send("Только в лс!")
             return
 
-        if await self.is_registered(guild_id):
+        voice: Voice = self.client.get_cog("Voice")
+        if await voice.is_registered(guild_id):
             await ctx.send("Уже зарегистрированы!")
             return
 
-        tr: TokenReceiver = TokenReceiver(login, password)
+        tr: TokenReceiverAsync = TokenReceiverAsync(login, password)
 
         if await tr.auth(
             on_captcha=lambda url: self.on_captcha_handler(ctx, url),
@@ -128,16 +131,10 @@ class Auth(Cog):
             on_critical_error=lambda obj: self.on_critical_error_handler(ctx, obj),
         ):
             token = tr.get_token()
-            await ctx.send(
-                f"""
-Успешно!
-Ваш токен: {token}
-"""
-            )
+            await ctx.send("Успешно! Ваш токен:\n" + f"```{token}```")
             tr.save_to_config(rf"tokens\{guild_id}.ini")
             await ctx.send(
-                f"""
-Токен успешно сохранён для дальнейших сессий
-Вернитесь на сервер и пропишите ещё раз:\n```!register```
-"""
+                f"Токен успешно сохранён для дальнейших сессий\n"
+                + "Вернитесь на сервер и пропишите ещё раз:\n"
+                + "```!register```"
             )
