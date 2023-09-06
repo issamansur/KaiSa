@@ -6,5 +6,5 @@ from source.actions import actions
 
 class Administration(Cog):
     def __init__(self, bot):
-        self.client = bot
+        self.bot = bot
         self._last_member = None

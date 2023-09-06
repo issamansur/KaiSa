@@ -12,7 +12,7 @@ import aiohttp
 
 class Administration(Cog):
     def __init__(self, bot):
-        self.client = bot
+        self.bot = bot
 
     @Cog.listener()
     async def on_member_join(self, member):

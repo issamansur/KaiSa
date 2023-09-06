@@ -181,7 +181,7 @@ def next(ctx):
 class Voice(Cog):
     # ctor
     def __init__(self, bot):
-        self.client = bot
+        self.bot = bot
 
     # for Auth.py
     async def is_registered(self, guild_id: int) -> bool:
