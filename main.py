@@ -5,14 +5,20 @@ import asyncio
 import aiohttp
 
 from discord import (
-    Intents,
-    Message,
-    utils,
-    Status,
-    Activity,
-    ActivityType,
     app_commands,
+    utils,
+    
+    Client,
+    Intents,
+    
     Object,
+    Message,
+
+    Status,
+    ActivityType,
+    Activity,
+    Game,
+    Streaming,
 )
 
 from discord.ext import commands
@@ -26,42 +32,55 @@ from cogs.Administration import Administration
 from cogs.Voice import Voice
 from cogs.Auth import Auth
 
-client = commands.Bot(command_prefix="!", intents=Intents.all())
+MY_GUILD = Object(id=DEFAULT_GUILD_ID)
+
+class SlashBot(commands.Bot):
+    def __init__(self, *, command_prefix: str,  intents: Intents):
+        super().__init__(command_prefix=command_prefix, intents=intents)
+
+    async def setup_hook(self):
+        '''
+        for server in client.guilds:
+            self.tree.copy_global_to(guild=Object(id=server.id))
+            await self.tree.sync(guild=Object(id=server.id))
+        '''
+        self.tree.copy_global_to(guild=MY_GUILD)
+        await self.tree.sync(guild=MY_GUILD)
+
+client = SlashBot(command_prefix="!", intents=Intents.all())
 
 # -------------------------------------------------------
-s1 = Status.dnd
-a1 = Activity(
-    type=ActivityType.watching,
-    name="Hentai 🤤🔞",
-)
-
-s2 = Status.online
-a2 = Activity(
-    type=ActivityType.playing,
-    name="League of Legends",
-)
+activities = [
+    Game(
+        name="League of Legends",
+    ),
+    # ...
+]
 
 
 @client.event
 async def on_ready():
     print(f"Has logged in as {client.user}")
-    for server in client.guilds:
-        await client.tree.sync(guild=Object(id=server.id))
 
+    # set cogs
     await client.add_cog(Administration(client))
     await client.add_cog(Voice(client))
     await client.add_cog(Auth(client))
 
+    # set slash commands
+
+    # set status
     await client.change_presence(
-        status=s2,
-        activity=a2,
+        status=Status.online,
+        activity=activities[0],
     )
 
 
 @client.tree.command(
-    name="testtest", description="Test to see if slash commands are working"
+    name="test", 
+    description="Test to see if slash commands are working"
 )
-async def test(interaction):
+async def _test(interaction):
     await interaction.response.send_message("Test")
 
 
@@ -102,7 +121,7 @@ async def on_command_error(ctx, error):
 
 @commands.is_owner()
 @client.command(pass_context=False)
-async def reload(ctx: commands.Context):
+async def off(ctx: commands.Context):
     await client.close()
 
 

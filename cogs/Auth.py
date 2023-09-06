@@ -32,7 +32,7 @@ async def is_dm(ctx: Context):
 class Auth(Cog):
     ### constructor
     def __init__(self, bot):
-        self.client: Bot = bot
+        self.bot: Bot = bot
 
     ### !register
     @has_permissions(administrator=True)
