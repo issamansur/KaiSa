@@ -128,5 +128,5 @@ async def off(ctx: commands.Context):
 # --------------------------------------------------------------------------
 
 
-client.run()
+client.run("MTE0NzgzNDEzNTkxODk1NjU3Nw.GUdj-H.iArpi0GTwyS6o8Sh1r_a33mzr3LpbuL5X65Tys")
 # os.system(f"start cmd /k python main.py")
