@@ -102,11 +102,11 @@ async def add_track(interaction: Interaction, song: Song):
 
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     length: int = len(queue)
-
     if length < 50:
-        queue.append(song)
+        guilds[interaction.guild.id]["Queue"].append(song)
         await interaction.channel.send(
-            ANSWERS.__f(f"Трек добавлен в очередь! ({length + 1}/15)")
+            # ANSWERS.__f(f"Трек добавлен в очередь! ({length + 1}/15)")
+            "123"
         )
     else:
         await interaction.channel.send(ANSWERS.ON_LIST_FULL)
