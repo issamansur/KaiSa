@@ -1,18 +1,16 @@
-from ctypes import Union
 import io
 import os
 import aiohttp
 
-from discord import File, VoiceClient, FFmpegPCMAudio
-from discord.ext.commands import Context, Cog, Context, command, is_owner
+from discord import app_commands, Interaction, VoiceClient, FFmpegPCMAudio, File
+from discord.ext.commands import Cog, Context, command, is_owner
 import youtube_dl
 
-from vkpymusic import TokenReceiver, Service, Song
+from vkpymusic import Service, Song, Playlist
 
 from .Settings import *
 from .source.actions import *
 from .source.answers import *
-
 
 from .elements.Views import ViewForSong, ViewForPlaylist
 
@@ -24,8 +22,8 @@ FFMPEG_OPTIONS = {
 
 guilds: dict[int:dict] = {}
 
-
-async def is_chat(ctx):
+"""
+async def is_chat(ctx: Context):
     user = ctx.message.author
     try:
         getattr(user, "voice")
@@ -34,12 +32,25 @@ async def is_chat(ctx):
         await ctx.send(ANSWERS.IS_NOT_CHAT)
         return False
 
-
 async def is_registered(ctx: Context) -> bool:
     if guilds.get(ctx.guild.id, {}).get("Service", None) != None:
         return True
     else:
         await ctx.send(ANSWERS.NO_SERVICE)
+        return False
+"""
+
+
+async def is_chat(interaction: Interaction):
+    channel = interaction.channel
+    return channel != None
+
+
+async def is_registered(ctx: Interaction) -> bool:
+    if guilds.get(ctx.guild.id, {}).get("Service", None) != None:
+        return True
+    else:
+        await ctx.response.send_message(ANSWERS.NO_SERVICE)
         return False
 
 
@@ -55,9 +66,7 @@ def get_is_repeat(ctx: Context) -> Service:
     return guilds[ctx.guild.id]["is_repeat"]
 
 
-async def join(ctx):
-    if not await is_chat(ctx):
-        return
+async def join(ctx: Context):
     user_voice: VoiceClient = ctx.message.author.voice
 
     if not user_voice:
@@ -76,10 +85,7 @@ async def join(ctx):
     return client_voice
 
 
-async def add_track(ctx, song):
-    if not await is_chat(ctx):
-        return
-
+async def add_track(ctx: Context, song: Song):
     client_voice: VoiceClient = ctx.voice_client
     user_voice: VoiceClient = ctx.author.voice
 
@@ -94,21 +100,19 @@ async def add_track(ctx, song):
         if not client_voice:
             return False
 
-    guild: dict[int:dict] = guilds.setdefault(ctx.guild.id, {})
+    queue: list[Song] = guilds[ctx.guild.id]["Queue"]
+    length: int = len(queue)
 
-    service: dict
-    queue: list[Song] = guild.get("Queue", [])
-    is_repeat: str = guild.setdefault("is_repeat", "off")
-    k: int = len(queue)
-
-    if k < 50:
+    if length < 50:
         queue.append(song)
-        await ctx.channel.send(ANSWERS.__f(f"Трек добавлен в очередь! ({k + 1}/15)"))
+        await ctx.channel.send(
+            ANSWERS.__f(f"Трек добавлен в очередь! ({length + 1}/15)")
+        )
     else:
         await ctx.channel.send(ANSWERS.ON_LIST_FULL)
         return
 
-    if not client_voice.is_playing():
+    if length == 0:
         title = play(ctx, client_voice)
         if title:
             await ctx.channel.send(ANSWERS.ON_ADDING_TRACK)
@@ -117,18 +121,20 @@ async def add_track(ctx, song):
     return True
 
 
-async def save(ctx, music: Song):
+async def save(interaction: Interaction, music: Song):
     async with aiohttp.ClientSession() as session:
         async with session.get(music.url) as resp:
             song = await resp.read()
             with io.BytesIO(song) as file:
-                await ctx.channel.send(f"{music}", file=File(file, "{music}.mp3"))
+                await interaction.channel.send(
+                    f"{music}", file=File(file, "{music}.mp3")
+                )
     return
 
 
 # ---------------------------------------------
-def play(ctx: Context, voice, song: Song):
-    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+def play(interaction: Context, voice: VoiceClient, song: Song):
+    guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
     queue: list[Song] = guild.get("Queue", [])
 
     if len(queue) != 0:
@@ -147,18 +153,18 @@ def play(ctx: Context, voice, song: Song):
         client_voice: VoiceClient = voice
         client_voice.play(
             FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
-            after=lambda _: next(ctx, client_voice),
+            after=lambda _: next(interaction, client_voice),
         )
 
         if os.path.isfile(file_path):
-            get_service(ctx.guild.id).save_song(song)
+            get_service(interaction.guild.id).save_song(song)
         return song
 
 
-def next(ctx):
-    guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
-    queue: list[Song] = guilds[ctx.guild.id]["Queue"]
-    is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
+def next(interaction: Interaction, voice: VoiceClient):
+    guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
+    queue: list[Song] = guilds[interaction.guild.id]["Queue"]
+    is_repeat: bool = guilds[interaction.guild.id]["is_repeat"]
 
     if is_repeat == "off":
         queue.pop()
@@ -166,7 +172,7 @@ def next(ctx):
         pass
     elif is_repeat == "all":
         queue.append(queue.pop(0))
-    guilds.get(ctx.guild.id, {})
+    guilds.get(interaction.guild.id, {})
 
     if len(queue) == 0:
         # await ctx.channel.send(ANSWERS.ON_END)
@@ -174,7 +180,7 @@ def next(ctx):
 
     song: Song = queue[0]
     # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))
-    play(ctx, song)
+    play(interaction, voice, song)
 
 
 # ---------------------------------------------
@@ -198,38 +204,38 @@ class Voice(Cog):
 
     @command()
     @is_owner()
-    async def services(self, ctx):
+    async def services(self, ctx: Context):
         if not await is_chat(ctx):
             return
         await ctx.send(guilds)
 
-    @command(
-        pass_context=True,
-        brief="This will search a song by name/author",
-        aliases=["search"],
+    @app_commands.command(
+        name="search",
+        description="Search a song by title/artist",
     )
-    async def s(self, ctx, *, text: str):
-        if not await is_chat(ctx):
+    @app_commands.describe(text="Song title or artist")
+    async def _search(self, interaction: Interaction, text: str):
+        if not await is_chat(interaction):
             return
-        if not await is_registered(ctx):
+        if not await is_registered(interaction):
             return
 
-        await ctx.channel.send(ANSWERS.ON_SEARCH)
-        songs = get_service(ctx).search_songs_by_text(text)
+        await interaction.response.send_message(ANSWERS.ON_SEARCH)
+        songs = get_service(interaction).search_songs_by_text(text)
 
         if len(songs) == 0:
-            await ctx.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)
+            await interaction.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)
             return
 
-        await ctx.channel.send(ANSWERS.ON_TRACKS_FOUND)
+        await interaction.channel.send(ANSWERS.ON_TRACKS_FOUND)
 
         for song in songs:
-            view: ViewForSong = ViewForSong(ctx, song)
+            view: ViewForSong = ViewForSong(interaction, song)
 
             view.on_play = add_track
             view.on_save = save
 
-            view.message = await ctx.channel.send(
+            view.message = await interaction.channel.send(
                 f"""```
 Название: {song.title}
 Исполнитель: {song.artist}
@@ -239,26 +245,29 @@ class Voice(Cog):
                 view=view,
             )
 
-    @command(pass_context=True, brief="This show list/queue of songs", aliases=["list"])
-    async def l(self, ctx):
-        if not await is_chat(ctx):
+    @app_commands.command(
+        name="list",
+        description="Show list/queue of songs",
+    )
+    async def _list(self, interaction: Interaction):
+        if not await is_chat(interaction):
             return
-        if not await is_registered(ctx):
+        if not await is_registered(interaction):
             return
 
-        guild: dict[int:dict] = guilds.get(ctx.guild.id, {})
+        guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
         queue: list[Song] = guild.get("Queue", [])
 
         if len(queue) == 0:
-            await ctx.channel.send(ANSWERS.ON_LIST_EMPTY)
+            await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
         else:
             list = ""
             for i, track in enumerate(queue, start=1):
                 queue_list += f"{i}. {track}\n"
-            await ctx.channel.send(f"```> Список:\n{queue_list}```")
+            await interaction.response.send_message(f"```> Список:\n{queue_list}```")
 
     @command(pass_context=True, brief="This will skip current song", aliases=["sk"])
-    async def skip(self, ctx):
+    async def skip(self, ctx: Context):
         if not await is_chat(ctx):
             return
         if not await is_registered(ctx):
@@ -277,7 +286,7 @@ class Voice(Cog):
             await ctx.send(ANSWERS.NO_VOICE_BOT)
 
     @command()
-    async def r(self, ctx, repeat_type: str):
+    async def r(self, ctx: Context, repeat_type: str):
         if not await is_chat(ctx):
             return
         if not await is_registered(ctx):
@@ -303,7 +312,7 @@ class Voice(Cog):
         brief="Makes the bot leave/quit your channel",
         aliases=["quit"],
     )
-    async def q(self, ctx):
+    async def q(self, ctx: Context):
         if not await is_chat(ctx):
             return
         if not await is_registered(ctx):
@@ -329,7 +338,7 @@ class Voice(Cog):
         brief="This will play audio from youtube url",
         aliases=["youtube"],
     )
-    async def yt(self, ctx, url):
+    async def yt(self, ctx: Context, url: str):
         if not await is_chat(ctx):
             return
         client_voice: VoiceClient = ctx.voice_client

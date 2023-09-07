@@ -1,5 +1,5 @@
-from discord import utils, Member
-from discord.ext.commands import Cog, command, Context, is_owner
+from discord import app_commands, utils, Interaction, Object, User, Member, Embed, Color
+from discord.ext.commands import Bot, Cog, Context, command, is_owner, dm_only
 
 from .Settings import *
 from .source.actions import *
@@ -12,7 +12,32 @@ import aiohttp
 
 class Administration(Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: Bot = bot
+
+    @app_commands.command(name="report", description="Send report to bot's owner")
+    @app_commands.describe(info="Additional info about problem")
+    async def _report(self, interaction: Interaction, info: str):
+        owner: User = await self.bot.fetch_user(ADMIN_USER_ID)
+        embed = Embed(
+            title=f"Report about Kai'Sa",
+            url=None,
+            description=info,
+            color=Color.red(),
+        )
+        embed.set_author(
+            name=interaction.user.display_name,
+            url=None,
+            icon_url=interaction.user.avatar,
+        )
+        embed.add_field(name="User", value=interaction.user.mention, inline=True)
+        if interaction.guild != None:
+            embed.add_field(name="Guild", value=interaction.guild.name, inline=True)
+            embed.add_field(name="Guild Id", value=interaction.guild.id, inline=True)
+        await owner.send(embed=embed)
+
+        await interaction.response.send_message(
+            "Жалоба успешно отправлена создателю бота!", ephemeral=True
+        )
 
     @Cog.listener()
     async def on_member_join(self, member):

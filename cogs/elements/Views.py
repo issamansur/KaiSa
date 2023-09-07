@@ -22,6 +22,7 @@ def change(button: Button, result: int):
         button.emoji = "🔄"
         button.label = "Try again"
         button.style = ButtonStyle.danger
+        button.disabled = False
 
 
 class ViewForSong(View):
@@ -30,17 +31,14 @@ class ViewForSong(View):
     on_play = None
     on_save = None
 
-    def __init__(self, ctx, music, *, timeout=10) -> None:
+    def __init__(self, interaction, music, *, timeout=15) -> None:
         super().__init__(timeout=timeout)
-        self.context: Context = ctx
+        self.interaction: Interaction = interaction
         self.music: Song = music
 
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
-
-        # self.clear_items()
-
         await self.message.edit(view=self)
 
     @button(label="Play song", style=ButtonStyle.primary, emoji="🎵")
@@ -48,14 +46,12 @@ class ViewForSong(View):
         change(button, 0)
         await self.message.edit(view=self)
 
-        await interaction.response.defer(thinking=True)
-
+        await interaction.response.defer()
         try:
-            await self.on_play(self.context, self.music)
+            await self.on_play(self.interaction, self.music)
             change(button, 1)
         except:
             change(button, -1)
-
         await interaction.followup.edit_message(self.message.id, view=self)
 
     @button(label="Download", style=ButtonStyle.primary, emoji="⬇")
@@ -80,7 +76,7 @@ class ViewForPlaylist(View):
     on_play = None
     on_show = None
 
-    def __init__(self, ctx, playlist, *, timeout=20) -> None:
+    def __init__(self, ctx, playlist, *, timeout=30) -> None:
         super().__init__(timeout=timeout)
         self.context = ctx
         self.playlist = playlist
@@ -88,9 +84,6 @@ class ViewForPlaylist(View):
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
-
-        # self.clear_items()
-
         await self.message.edit(view=self)
 
     @button(label="Play album", style=ButtonStyle.primary, emoji="🎵")

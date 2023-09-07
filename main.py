@@ -7,13 +7,11 @@ import aiohttp
 from discord import (
     app_commands,
     utils,
-    
     Client,
     Intents,
-    
+    Interaction,
     Object,
     Message,
-
     Status,
     ActivityType,
     Activity,
@@ -32,20 +30,30 @@ from cogs.Administration import Administration
 from cogs.Voice import Voice
 from cogs.Auth import Auth
 
-MY_GUILD = Object(id=DEFAULT_GUILD_ID)
+SYNC_GUILD = Object(id=DEFAULT_GUILD_ID)
+
 
 class SlashBot(commands.Bot):
-    def __init__(self, *, command_prefix: str,  intents: Intents):
+    def __init__(self, *, command_prefix: str, intents: Intents):
         super().__init__(command_prefix=command_prefix, intents=intents)
 
     async def setup_hook(self):
-        '''
+        # set cogs
+        await client.add_cog(Administration(client))
+        await client.add_cog(Voice(client))
+        await client.add_cog(Auth(client))
+        # sync all
+        """
         for server in client.guilds:
             self.tree.copy_global_to(guild=Object(id=server.id))
             await self.tree.sync(guild=Object(id=server.id))
-        '''
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
+        """
+        # sync main
+        self.tree.copy_global_to(guild=SYNC_GUILD)
+        await self.tree.sync(guild=SYNC_GUILD)
+        # on tree error
+        self.tree.on_error = on_tree_error
+
 
 client = SlashBot(command_prefix="!", intents=Intents.all())
 
@@ -62,13 +70,6 @@ activities = [
 async def on_ready():
     print(f"Has logged in as {client.user}")
 
-    # set cogs
-    await client.add_cog(Administration(client))
-    await client.add_cog(Voice(client))
-    await client.add_cog(Auth(client))
-
-    # set slash commands
-
     # set status
     await client.change_presence(
         status=Status.online,
@@ -76,12 +77,31 @@ async def on_ready():
     )
 
 
+@commands.is_owner()
 @client.tree.command(
-    name="test", 
-    description="Test to see if slash commands are working"
+    name="test", description="Test to see if slash commands are working"
 )
 async def _test(interaction):
     await interaction.response.send_message("Test")
+
+
+@app_commands.checks.cooldown(1, 30)
+@client.tree.command(name="ping", description="Check bot")
+async def _ping(interaction: Interaction):
+    await interaction.response.send_message("Pong!")
+
+
+async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        return await interaction.response.send_message(
+            f"Command is currently on cooldown! Try again in **{error.retry_after:.2f}** seconds!"
+        )
+
+    elif isinstance(error, app_commands.CommandNotFound):
+        print(error)
+
+    else:
+        raise error
 
 
 @client.event
@@ -128,5 +148,5 @@ async def off(ctx: commands.Context):
 # --------------------------------------------------------------------------
 
 
-client.run("")
+client.run("MTE0NzgzNDEzNTkxODk1NjU3Nw.GZC9md.bGAfUmRfBL8_ACOTwiKsdvOrpSydi-JGZ3x2xM")
 # os.system(f"start cmd /k python main.py")

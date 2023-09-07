@@ -1,14 +1,14 @@
 import io
 import aiohttp
 
-from discord import File
+from discord import app_commands, Interaction, User, File
 from discord.ext.commands import (
-    Bot,
-    Context,
-    Cog,
-    Context,
     command,
     has_permissions,
+
+    Cog,
+    Bot,
+    Context,
 )
 
 from vkpymusic import TokenReceiverAsync, Service, Song
@@ -24,7 +24,7 @@ FFMPEG_OPTIONS = {
 }
 
 
-async def is_dm(ctx: Context):
+async def is_dm(ctx: Interaction):
     return ctx.guild == None
 
 
@@ -36,34 +36,39 @@ class Auth(Cog):
 
     ### !register
     @has_permissions(administrator=True)
-    @command(
-        pass_context=True,
-        brief="Auth VK for audio service",
-        aliases=["reg"],
+    @app_commands.command(
+        name="register",
+        description="Register service for audio",
     )
-    async def register(self, ctx: Context):
-        if await is_dm(ctx):
-            await ctx.send("Только в группе!")
+    async def _register(self, interaction: Interaction):
+        if await is_dm(interaction):
+            await interaction.response.send_message("Только в группе!")
             return
 
-        guild_id: int = ctx.message.guild.id
-        voice: Voice = self.client.get_cog("Voice")
+        guild_id: int = interaction.guild.id
+        voice: Voice = self.bot.get_cog("Voice")
 
-        if await voice.is_registered(ctx.guild.id):
-            await ctx.send("Уже зарегистрированы!")
+        if await voice.is_registered(guild_id):
+            await interaction.response.send_message(
+                content="Уже зарегистрированы!",
+                ephemeral=True    
+            )
             return
 
         service: Service = Service.parse_config(rf"tokens\{guild_id}.ini")
         if service == None:
-            await ctx.message.author.send(
+            await interaction.user.send(
                 "Приветики, для авторизации используется ВК.\n"
                 + "Токен не найден, необходима авторизация. Введите:\n"
                 + f"```!auth {guild_id} <Логин/Телефон> <Пароль>```"
             )
         else:
-            await ctx.send(f"```Сервис для сервера {ctx.guild.name} активен!```")
-            voice: Voice = self.client.get_cog("Voice")
+            await interaction.user.send(f"```> Сервис для сервера {interaction.guild.name} активен!```")
             await voice.set_service(guild_id, service)
+        await interaction.response.send_message(
+            content="Проверь сообщения в приватике!",
+            ephemeral=True    
+        )
 
     ### 4 handlers and !auth
     # handler_1 (captcha image)
