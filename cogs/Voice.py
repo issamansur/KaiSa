@@ -66,58 +66,58 @@ def get_is_repeat(ctx: Context) -> Service:
     return guilds[ctx.guild.id]["is_repeat"]
 
 
-async def join(ctx: Context):
-    user_voice: VoiceClient = ctx.message.author.voice
+async def join(interaction: Interaction):
+    user_voice: VoiceClient = interaction.user.voice
 
     if not user_voice:
-        await ctx.send(ANSWERS.NO_VOICE_USER)
+        await interaction.channel.send(ANSWERS.NO_VOICE_USER)
         return
 
-    client_voice: VoiceClient = ctx.voice_client
+    client_voice: VoiceClient = interaction.guild.voice_client
     if client_voice and client_voice.is_connected():
         if client_voice.channel.id == user_voice.channel.id:
-            await ctx.send(ANSWERS.JUST_THERE)
+            await interaction.channel.send(ANSWERS.JUST_THERE)
         else:
-            await ctx.send(ANSWERS.JUST_BUSY)
+            await interaction.channel.send(ANSWERS.JUST_BUSY)
         return
     client_voice = await user_voice.channel.connect(timeout=60.0, self_deaf=True)
-    await ctx.channel.send(ANSWERS.ON_JOIN)
+    await interaction.channel.send(ANSWERS.ON_JOIN)
     return client_voice
 
 
-async def add_track(ctx: Context, song: Song):
-    client_voice: VoiceClient = ctx.voice_client
-    user_voice: VoiceClient = ctx.author.voice
+async def add_track(interaction: Interaction, song: Song):
+    client_voice: VoiceClient = interaction.guild.voice_client
+    user_voice: VoiceClient = interaction.user.voice
 
     if client_voice and client_voice.is_connected():
         if user_voice and client_voice.channel.id == user_voice.channel.id:
             pass
         else:
-            await ctx.send(ANSWERS.JUST_BUSY)
+            await interaction.channel.send(ANSWERS.JUST_BUSY)
             return False
     else:
-        client_voice = await join(ctx)
+        client_voice = await join(interaction)
         if not client_voice:
             return False
 
-    queue: list[Song] = guilds[ctx.guild.id]["Queue"]
+    queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     length: int = len(queue)
 
     if length < 50:
         queue.append(song)
-        await ctx.channel.send(
+        await interaction.channel.send(
             ANSWERS.__f(f"Трек добавлен в очередь! ({length + 1}/15)")
         )
     else:
-        await ctx.channel.send(ANSWERS.ON_LIST_FULL)
+        await interaction.channel.send(ANSWERS.ON_LIST_FULL)
         return
 
     if length == 0:
-        title = play(ctx, client_voice)
+        title = play(interaction, client_voice, song)
         if title:
-            await ctx.channel.send(ANSWERS.ON_ADDING_TRACK)
+            await interaction.channel.send(ANSWERS.ON_ADDING_TRACK)
         else:
-            await ctx.channel.send(ANSWERS.ON_END)
+            await interaction.channel.send(ANSWERS.ON_END)
     return True
 
 
@@ -134,8 +134,7 @@ async def save(interaction: Interaction, music: Song):
 
 # ---------------------------------------------
 def play(interaction: Context, voice: VoiceClient, song: Song):
-    guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
-    queue: list[Song] = guild.get("Queue", [])
+    queue = guilds[interaction.guild.id]["Queue"]
 
     if len(queue) != 0:
         song = Song.safe(queue[0])
