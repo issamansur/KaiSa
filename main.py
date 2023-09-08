@@ -24,7 +24,7 @@ from youtube_dl import YoutubeDL
 
 from cogs.source.actions import *
 from cogs.source.answers import ANSWERS
-from cogs.Settings import *
+from .Settings import *
 
 from cogs.Administration import Administration
 from cogs.Voice import Voice

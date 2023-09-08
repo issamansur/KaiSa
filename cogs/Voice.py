@@ -9,7 +9,7 @@ import youtube_dl
 
 from vkpymusic import Service, Song, Playlist
 
-from .Settings import *
+from ..Settings import *
 from .source.actions import *
 from .source.answers import ANSWERS
 
