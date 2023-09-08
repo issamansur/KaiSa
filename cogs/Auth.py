@@ -5,7 +5,6 @@ from discord import app_commands, Interaction, User, File
 from discord.ext.commands import (
     command,
     has_permissions,
-
     Cog,
     Bot,
     Context,
@@ -50,8 +49,7 @@ class Auth(Cog):
 
         if await voice.is_registered(guild_id):
             await interaction.response.send_message(
-                content="Уже зарегистрированы!",
-                ephemeral=True    
+                content="Уже зарегистрированы!", ephemeral=True
             )
             return
 
@@ -63,11 +61,12 @@ class Auth(Cog):
                 + f"```!auth {guild_id} <Логин/Телефон> <Пароль>```"
             )
         else:
-            await interaction.user.send(f"```> Сервис для сервера {interaction.guild.name} активен!```")
+            await interaction.user.send(
+                f"```> Сервис для сервера {interaction.guild.name} активен!```"
+            )
             await voice.set_service(guild_id, service)
         await interaction.response.send_message(
-            content="Проверь сообщения в приватике!",
-            ephemeral=True    
+            content="Проверь сообщения в приватике!", ephemeral=True
         )
 
     ### 4 handlers and !auth

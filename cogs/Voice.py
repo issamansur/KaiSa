@@ -1,5 +1,6 @@
 import io
 import os
+from typing import Literal
 import aiohttp
 
 from discord import app_commands, Interaction, VoiceClient, FFmpegPCMAudio, File
@@ -10,10 +11,11 @@ from vkpymusic import Service, Song, Playlist
 
 from .Settings import *
 from .source.actions import *
-from .source.anaswers import ANSWERS
+from .source.answers import ANSWERS
 
 from .elements.Views import ViewForSong, ViewForPlaylist
 
+RepeatMode: list[str] = ["OFF", "ONE", "ALL"]
 
 FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -87,8 +89,7 @@ async def add_track(interaction: Interaction, song: Song):
     if length < 50:
         guilds[interaction.guild.id]["Queue"].append(song)
         await interaction.channel.send(
-            # ANSWERS.__f(f"Трек добавлен в очередь! ({length + 1}/15)")
-            "123"
+            f"```> Трек добавлен в очередь! ({length + 1}/15)```"
         )
     else:
         await interaction.channel.send(ANSWERS.ON_LIST_FULL)
@@ -109,7 +110,7 @@ async def save(interaction: Interaction, music: Song):
             song = await resp.read()
             with io.BytesIO(song) as file:
                 await interaction.channel.send(
-                    f"{music}", file=File(file, "{music}.mp3")
+                    f"{music}", file=File(file, f"{music}.mp3")
                 )
     return
 
@@ -143,15 +144,14 @@ def play(interaction: Context, voice: VoiceClient, song: Song):
 
 
 def next(interaction: Interaction, voice: VoiceClient):
-    guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     is_repeat: bool = guilds[interaction.guild.id]["is_repeat"]
 
-    if is_repeat == "off":
+    if is_repeat == "OFF":
         queue.pop()
-    elif is_repeat == "one":
+    elif is_repeat == "ONE":
         pass
-    elif is_repeat == "all":
+    elif is_repeat == "ALL":
         queue.append(queue.pop(0))
     guilds.get(interaction.guild.id, {})
 
@@ -180,7 +180,7 @@ class Voice(Cog):
     async def set_service(self, guild_id: int, service: Service):
         guilds.setdefault(guild_id, {})
         guilds[guild_id]["Service"] = service
-        guilds[guild_id]["is_repeat"] = "off"
+        guilds[guild_id]["is_repeat"] = "OFF"
         guilds[guild_id]["Queue"] = []
 
     @command()
@@ -211,7 +211,7 @@ class Voice(Cog):
         await interaction.channel.send(ANSWERS.ON_TRACKS_FOUND)
 
         for song in songs:
-            view: ViewForSong = ViewForSong(interaction, song)
+            view: ViewForSong = ViewForSong(song)
 
             view.on_play = add_track
             view.on_save = save
@@ -250,30 +250,7 @@ class Voice(Cog):
         name="skip",
         description="Skip current song",
     )
-    async def _skip(self, ctx: Context):
-        if not await is_chat(ctx):
-            return
-        if not await is_registered(ctx):
-            return
-
-        client_voice: VoiceClient = ctx.voice_client
-        user_voice = VoiceClient = ctx.author.voice
-
-        if client_voice and client_voice.is_connected():
-            if user_voice and client_voice.channel.id == user_voice.channel.id:
-                await ctx.send(ANSWERS.ON_SKIP)
-                client_voice.stop()
-            else:
-                await ctx.send(ANSWERS.JUST_BUSY)
-        else:
-            await ctx.send(ANSWERS.NO_VOICE_BOT)
-
-    @app_commands.command(
-        name="repeat",
-        description="Change repeat mode",
-    )
-    @app_commands.describe(name="mode", description="mode of repeating [off, one, all]")
-    async def _repeat(self, interaction: Interaction, mode: str):
+    async def _skip(self, interaction: Interaction):
         if not await is_chat(interaction):
             return
         if not await is_registered(interaction):
@@ -284,9 +261,36 @@ class Voice(Cog):
 
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
-                if mode in ["one", "all", "off"]:
+                await interaction.response.send_message(ANSWERS.ON_SKIP)
+                client_voice.stop()
+            else:
+                await interaction.response.send_message(ANSWERS.JUST_BUSY)
+        else:
+            await interaction.response.send_message(ANSWERS.NO_VOICE_BOT)
+
+    @app_commands.command(
+        name="repeat",
+        description="Change repeat mode",
+    )
+    @app_commands.describe(mode="mode of repeating [OFF, ONE, ALL]")
+    async def _repeat(
+        self, interaction: Interaction, mode: Literal["OFF", "ONE", "ALL"]
+    ):
+        if not await is_chat(interaction):
+            return
+        if not await is_registered(interaction):
+            return
+
+        client_voice: VoiceClient = interaction.guild.voice_client
+        user_voice = VoiceClient = interaction.user.voice
+
+        if client_voice and client_voice.is_connected():
+            if user_voice and client_voice.channel.id == user_voice.channel.id:
+                if mode in RepeatMode:
                     guilds[interaction.guild.id]["is_repeat"] = mode
-                    await interaction.response.send_message(f"```Repeat mode: {mode}```")
+                    await interaction.response.send_message(
+                        f"```Repeat mode: {mode}```"
+                    )
                 else:
                     await interaction.response.send_message(ANSWERS.INVALID_REPEAT_TYPE)
             else:
@@ -309,10 +313,9 @@ class Voice(Cog):
 
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
-
                 guilds[interaction.guild.id]["Queue"] = []
-                guilds[interaction.guild.id]["is_repeat"] = 'off'
-                
+                guilds[interaction.guild.id]["is_repeat"] = "OFF"
+
                 await interaction.response.send_message(ANSWERS.ON_QUIT)
                 await client_voice.disconnect()
             else:

@@ -26,15 +26,14 @@ def change(button: Button, result: int):
 
 
 class ViewForSong(View):
-    message = None
+    # message = None
 
     on_play = None
     on_save = None
 
-    def __init__(self, interaction, music, *, timeout=15) -> None:
+    def __init__(self, song, *, timeout=15) -> None:
         super().__init__(timeout=timeout)
-        self.interaction: Interaction = interaction
-        self.music: Song = music
+        self.song: Song = song
 
     async def on_timeout(self) -> None:
         for item in self.children:
@@ -48,7 +47,7 @@ class ViewForSong(View):
 
         await interaction.response.defer()
         try:
-            await self.on_play(self.interaction, self.music)
+            await self.on_play(interaction, self.song)
             change(button, 1)
         except:
             change(button, -1)
@@ -57,12 +56,11 @@ class ViewForSong(View):
     @button(label="Download", style=ButtonStyle.primary, emoji="⬇")
     async def save_button(self, interaction: Interaction, button: Button):
         change(button, 0)
-        await interaction.response.edit_message(view=self)
+        await self.message.edit(view=self)
 
         await interaction.response.defer()
-
         try:
-            await self.on_save(self.music)
+            await self.on_save(interaction, self.song)
             change(button, 1)
         except:
             change(button, -1)
