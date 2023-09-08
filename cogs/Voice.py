@@ -22,24 +22,6 @@ FFMPEG_OPTIONS = {
 
 guilds: dict[int:dict] = {}
 
-"""
-async def is_chat(ctx: Context):
-    user = ctx.message.author
-    try:
-        getattr(user, "voice")
-        return True
-    except AttributeError:
-        await ctx.send(ANSWERS.IS_NOT_CHAT)
-        return False
-
-async def is_registered(ctx: Context) -> bool:
-    if guilds.get(ctx.guild.id, {}).get("Service", None) != None:
-        return True
-    else:
-        await ctx.send(ANSWERS.NO_SERVICE)
-        return False
-"""
-
 
 async def is_chat(interaction: Interaction):
     channel = interaction.channel
