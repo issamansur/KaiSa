@@ -236,8 +236,7 @@ class Voice(Cog):
         if not await is_registered(interaction):
             return
 
-        guild: dict[int:dict] = guilds.get(interaction.guild.id, {})
-        queue: list[Song] = guild.get("Queue", [])
+        queue: list[Song] = guilds[interaction.guild.id]["Queue"]
 
         if len(queue) == 0:
             await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
@@ -247,8 +246,11 @@ class Voice(Cog):
                 queue_list += f"{i}. {track}\n"
             await interaction.response.send_message(f"```> Список:\n{queue_list}```")
 
-    @command(pass_context=True, brief="This will skip current song", aliases=["sk"])
-    async def skip(self, ctx: Context):
+    @app_commands.command(
+        name="skip",
+        description="Skip current song",
+    )
+    async def _skip(self, ctx: Context):
         if not await is_chat(ctx):
             return
         if not await is_registered(ctx):
@@ -266,51 +268,57 @@ class Voice(Cog):
         else:
             await ctx.send(ANSWERS.NO_VOICE_BOT)
 
-    @command()
-    async def r(self, ctx: Context, repeat_type: str):
-        if not await is_chat(ctx):
-            return
-        if not await is_registered(ctx):
-            return
-
-        client_voice: VoiceClient = ctx.voice_client
-        user_voice = VoiceClient = ctx.author.voice
-
-        if client_voice and client_voice.is_connected():
-            if user_voice and client_voice.channel.id == user_voice.channel.id:
-                is_repeat: bool = guilds[ctx.guild.id]["is_repeat"]
-                if repeat_type in ["one", "all", "off"]:
-                    guilds[ctx.guild.id]["is_repeat"] = repeat_type
-                else:
-                    await ctx.send(ANSWERS.INVALID_REPEAT_TYPE)
-            else:
-                await ctx.send(ANSWERS.JUST_BUSY)
-        else:
-            await ctx.send(ANSWERS.NO_VOICE_BOT)
-
-    @command(
-        pass_context=True,
-        brief="Makes the bot leave/quit your channel",
-        aliases=["quit"],
+    @app_commands.command(
+        name="repeat",
+        description="Change repeat mode",
     )
-    async def q(self, ctx: Context):
-        if not await is_chat(ctx):
+    @app_commands.describe(name="mode", description="mode of repeating [off, one, all]")
+    async def _repeat(self, interaction: Interaction, mode: str):
+        if not await is_chat(interaction):
             return
-        if not await is_registered(ctx):
+        if not await is_registered(interaction):
             return
 
-        client_voice: VoiceClient = ctx.voice_client
-        user_voice = VoiceClient = ctx.author.voice
+        client_voice: VoiceClient = interaction.guild.voice_client
+        user_voice = VoiceClient = interaction.user.voice
 
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
-                await ctx.send(ANSWERS.ON_QUIT)
-                guilds[ctx.guild.id] = {}
+                if mode in ["one", "all", "off"]:
+                    guilds[interaction.guild.id]["is_repeat"] = mode
+                    await interaction.response.send_message(f"```Repeat mode: {mode}```")
+                else:
+                    await interaction.response.send_message(ANSWERS.INVALID_REPEAT_TYPE)
+            else:
+                await interaction.response.send_message(ANSWERS.JUST_BUSY)
+        else:
+            await interaction.response.send_message(ANSWERS.NO_VOICE_BOT)
+
+    @app_commands.command(
+        name="quit",
+        description="Makes bot to quit/leave the channel",
+    )
+    async def _quit(self, interaction: Interaction):
+        if not await is_chat(interaction):
+            return
+        if not await is_registered(interaction):
+            return
+
+        client_voice: VoiceClient = interaction.guild.voice_client
+        user_voice = VoiceClient = interaction.user.voice
+
+        if client_voice and client_voice.is_connected():
+            if user_voice and client_voice.channel.id == user_voice.channel.id:
+
+                guilds[interaction.guild.id]["Queue"] = []
+                guilds[interaction.guild.id]["is_repeat"] = 'off'
+                
+                await interaction.response.send_message(ANSWERS.ON_QUIT)
                 await client_voice.disconnect()
             else:
-                await ctx.send(ANSWERS.JUST_BUSY)
+                await interaction.response.send_message(ANSWERS.JUST_BUSY)
         else:
-            await ctx.send(ANSWERS.NO_VOICE_BOT)
+            await interaction.response.send_message(ANSWERS.NO_VOICE_BOT)
 
     # YOUTUBE
 
@@ -322,8 +330,8 @@ class Voice(Cog):
     async def yt(self, ctx: Context, url: str):
         if not await is_chat(ctx):
             return
-        client_voice: VoiceClient = ctx.voice_client
-        user_voice = VoiceClient = ctx.author.voice
+        client_voice: VoiceClient = ctx.guild.voice_client
+        user_voice = VoiceClient = ctx.user.voice
 
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
