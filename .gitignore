@@ -1,4 +1,4 @@
-/.vscode/
-/Music/
-/logs/
+.vscode
 __pycache__
+/logs
+/cogs/Settings.py

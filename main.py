@@ -132,21 +132,8 @@ async def on_message(message: Message):
     await client.process_commands(message)
 
 
-@client.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        return
-    raise error
-
-
-@commands.is_owner()
-@client.command(pass_context=False)
-async def off(ctx: commands.Context):
-    await client.close()
-
-
 # --------------------------------------------------------------------------
 
 
-client.run("")
+client.run(token=TOKEN)
 # os.system(f"start cmd /k python main.py")
