@@ -10,7 +10,7 @@ from vkpymusic import Service, Song, Playlist
 
 from .Settings import *
 from .source.actions import *
-from .source.answers import *
+from .source.anaswers import ANSWERS
 
 from .elements.Views import ViewForSong, ViewForPlaylist
 
