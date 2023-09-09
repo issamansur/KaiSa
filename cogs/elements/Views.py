@@ -82,7 +82,7 @@ class ViewForPlaylist(View):
 
     def __init__(self, playlist, *, timeout=30) -> None:
         super().__init__(timeout=timeout)
-        self.playlist = playlist
+        self.playlist: Playlist = playlist
 
     async def on_timeout(self) -> None:
         for item in self.children:

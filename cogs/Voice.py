@@ -178,37 +178,40 @@ def next(interaction: Interaction, voice: VoiceClient):
 
 # ---------------------------------------------
 async def show_playlist(interaction: Interaction, playlist: Playlist):
+    print(playlist.to_dict())
     if not await is_chat(interaction):
-        return
+        return False
     if not await is_registered(interaction):
-        return
+        return False
 
-    queue: list[Song] = guilds[interaction.guild.id]["Queue"]
-    repeat_mode: str = guilds[interaction.guild.id]["repeat_mode"]
+    service: Service = guilds[interaction.guild.id]["Service"]
+    songs: list[Song] = service.get_songs_by_playlist(playlist, 25)
 
-    if len(queue) == 0:
+    if len(songs) == 0:
         await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
+        return False
     else:
-        queue_list = ""
-        for i, track in enumerate(queue, start=1):
-            queue_list += f"**{i})** {track}\n"
+        songs_list = "**Список песен:**"
+        for i, song in enumerate(songs, start=1):
+            songs_list += f"\n**{i})** {song}"
         embed = Embed(
-            title="Список песен:",
+            title=playlist.title,
             url=None,
-            description=queue_list,
-            color=Color.blue(),
+            description=songs_list,
+            color=Color.dark_purple(),
         )
-        embed.set_footer(text=f"Повтор : {repeat_mode}")
+        embed.set_thumbnail(url=playlist.photo)
+        embed.set_footer(text=f"Показано {len(songs)}/{playlist.count} из песен")
+        await interaction.channel.send(embed=embed)
+        return True
 
-        await interaction.response.send_message(embed=embed)
 
-
-def play_playlist(interaction: Context, voice: VoiceClient, song: Song):
+def add_playlist(interaction: Interaction, playlist: Playlist):
     queue = guilds[interaction.guild.id]["Queue"]
 
     if len(queue) != 0:
-        song = Song.safe(queue[0])
-        file_name = f"{song}.mp3"
+        playlist = Song.safe(queue[0])
+        file_name = f"{playlist}.mp3"
         file_path = os.path.join("Musics", file_name)
 
         source_path: str = ""
@@ -217,7 +220,7 @@ def play_playlist(interaction: Context, voice: VoiceClient, song: Song):
             source_path = file_path
         else:
             print(f"File not found: {file_name}")
-            source_path = song.url
+            source_path = playlist.url
 
         client_voice: VoiceClient = voice
         client_voice.play(
@@ -226,8 +229,8 @@ def play_playlist(interaction: Context, voice: VoiceClient, song: Song):
         )
 
         if os.path.isfile(file_path):
-            get_service(interaction.guild.id).save_song(song)
-        return song
+            get_service(interaction.guild.id).save_song(playlist)
+        return playlist
 
 
 # ---------------------------------------------
@@ -297,7 +300,7 @@ class Voice(Cog):
         description="Search a playlist by query: title/artist",
     )
     @app_commands.describe(query="Playlist title or artist")
-    async def _search(self, interaction: Interaction, query: str):
+    async def _search_playlist(self, interaction: Interaction, query: str):
         if not await is_chat(interaction):
             return
         if not await is_registered(interaction):
@@ -316,13 +319,13 @@ class Voice(Cog):
             view: ViewForPlaylist = ViewForPlaylist(playlist)
 
             view.on_show = show_playlist
-            view.on_play = play_playlist
+            view.on_play = add_playlist
 
             view.message = await interaction.channel.send(
                 f"""```
 Название: {playlist.title}
-Исполнитель: {playlist.artist}
-Длительность: {playlist.duration}
+Описание: {playlist.description}
+Количество треков: {playlist.count}
 ```
 """,
                 view=view,
