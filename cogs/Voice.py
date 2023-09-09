@@ -93,7 +93,7 @@ async def add_track(interaction: Interaction, song: Song):
         )
     else:
         await interaction.channel.send(ANSWERS.ON_LIST_FULL)
-        return
+        return False
 
     if length == 0:
         title = play(interaction, client_voice, song)
@@ -112,7 +112,7 @@ async def save(interaction: Interaction, music: Song):
                 await interaction.channel.send(
                     f"{music}", file=File(file, f"{music}.mp3")
                 )
-    return
+    return True
 
 
 # ---------------------------------------------
@@ -147,6 +147,10 @@ def next(interaction: Interaction, voice: VoiceClient):
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     is_repeat: bool = guilds[interaction.guild.id]["is_repeat"]
 
+    if len(queue) == 0:
+        # await ctx.channel.send(ANSWERS.ON_END)
+        return
+
     if is_repeat == "OFF":
         queue.pop()
     elif is_repeat == "ONE":
@@ -154,10 +158,6 @@ def next(interaction: Interaction, voice: VoiceClient):
     elif is_repeat == "ALL":
         queue.append(queue.pop(0))
     guilds.get(interaction.guild.id, {})
-
-    if len(queue) == 0:
-        # await ctx.channel.send(ANSWERS.ON_END)
-        return
 
     song: Song = queue[0]
     # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))

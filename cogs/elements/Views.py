@@ -47,8 +47,11 @@ class ViewForSong(View):
 
         await interaction.response.defer()
         try:
-            await self.on_play(interaction, self.song)
-            change(button, 1)
+            res: bool = await self.on_play(interaction, self.song)
+            if res:
+                change(button, 1)
+            else:
+                change(button, -1)
         except:
             change(button, -1)
         await interaction.followup.edit_message(self.message.id, view=self)
@@ -60,8 +63,11 @@ class ViewForSong(View):
 
         await interaction.response.defer()
         try:
-            await self.on_save(interaction, self.song)
-            change(button, 1)
+            res: bool = await self.on_save(interaction, self.song)
+            if res:
+                change(button, 1)
+            else:
+                change(button, -1)
         except:
             change(button, -1)
 
@@ -83,20 +89,6 @@ class ViewForPlaylist(View):
             item.disabled = True
         await self.message.edit(view=self)
 
-    @button(label="Play album", style=ButtonStyle.primary, emoji="🎵")
-    async def play_button(self, interaction: Interaction, button: Button):
-        change(button, 0)
-        await self.message.edit(view=self)
-
-        await interaction.response.defer()
-        try:
-            await self.on_show(interaction, self.song)
-            change(button, 1)
-        except:
-            change(button, -1)
-
-        await interaction.followup.edit_message(self.message.id, view=self)
-
     @button(label="Show songs", style=ButtonStyle.primary, emoji="🔍")
     async def show_button(self, interaction: Interaction, button: Button):
         change(button, 0)
@@ -104,8 +96,28 @@ class ViewForPlaylist(View):
 
         await interaction.response.defer()
         try:
-            await self.on_play(interaction, self.song)
-            change(button, 1)
+            res: bool = await self.on_show(interaction, self.playlist)
+            if res:
+                change(button, 1)
+            else:
+                change(button, -1)
+        except:
+            change(button, -1)
+
+        await interaction.followup.edit_message(self.message.id, view=self)
+
+    @button(label="Play album", style=ButtonStyle.primary, emoji="🎵")
+    async def play_button(self, interaction: Interaction, button: Button):
+        change(button, 0)
+        await self.message.edit(view=self)
+
+        await interaction.response.defer()
+        try:
+            res: bool = await self.on_play(interaction, self.playlist)
+            if res:
+                change(button, 1)
+            else:
+                change(button, -1)
         except:
             change(button, -1)
 
