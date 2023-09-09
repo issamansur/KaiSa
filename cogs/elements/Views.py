@@ -71,12 +71,11 @@ class ViewForSong(View):
 class ViewForPlaylist(View):
     message = None
 
-    on_play = None
     on_show = None
+    on_play = None
 
-    def __init__(self, ctx, playlist, *, timeout=30) -> None:
+    def __init__(self, playlist, *, timeout=30) -> None:
         super().__init__(timeout=timeout)
-        self.context = ctx
         self.playlist = playlist
 
     async def on_timeout(self) -> None:
@@ -87,12 +86,11 @@ class ViewForPlaylist(View):
     @button(label="Play album", style=ButtonStyle.primary, emoji="🎵")
     async def play_button(self, interaction: Interaction, button: Button):
         change(button, 0)
-        await interaction.response.edit_message(view=self)
+        await self.message.edit(view=self)
 
         await interaction.response.defer()
-
         try:
-            await self.on_play(self.playlist)
+            await self.on_show(interaction, self.song)
             change(button, 1)
         except:
             change(button, -1)
@@ -102,12 +100,11 @@ class ViewForPlaylist(View):
     @button(label="Show songs", style=ButtonStyle.primary, emoji="🔍")
     async def show_button(self, interaction: Interaction, button: Button):
         change(button, 0)
-        await interaction.response.edit_message(view=self)
+        await self.message.edit(view=self)
 
         await interaction.response.defer()
-
         try:
-            await self.on_show(self.playlist)
+            await self.on_play(interaction, self.song)
             change(button, 1)
         except:
             change(button, -1)

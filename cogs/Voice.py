@@ -9,7 +9,7 @@ import youtube_dl
 
 from vkpymusic import Service, Song, Playlist
 
-from ..Settings import *
+from Settings import *
 from .source.actions import *
 from .source.answers import ANSWERS
 
@@ -241,7 +241,7 @@ class Voice(Cog):
         if len(queue) == 0:
             await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
         else:
-            list = ""
+            queue_list = ""
             for i, track in enumerate(queue, start=1):
                 queue_list += f"{i}. {track}\n"
             await interaction.response.send_message(f"```> Список:\n{queue_list}```")
@@ -324,7 +324,7 @@ class Voice(Cog):
             await interaction.response.send_message(ANSWERS.NO_VOICE_BOT)
 
     # YOUTUBE
-
+    """
     @command(
         pass_context=True,
         brief="This will play audio from youtube url",
@@ -359,3 +359,4 @@ class Voice(Cog):
 
         client_voice.volume = 100
         await ctx.send(ANSWERS.ON_PLAY)
+    """

@@ -1,7 +1,7 @@
 from discord import app_commands, utils, Interaction, Object, User, Member, Embed, Color
 from discord.ext.commands import Bot, Cog, Context, command, is_owner, dm_only
 
-from ..Settings import *
+from Settings import *
 from .source.actions import *
 from .source.answers import *
 
