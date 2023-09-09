@@ -3,7 +3,15 @@ import os
 from typing import Literal
 import aiohttp
 
-from discord import app_commands, Interaction, VoiceClient, FFmpegPCMAudio, File
+from discord import (
+    app_commands,
+    Interaction,
+    VoiceClient,
+    FFmpegPCMAudio,
+    Embed,
+    File,
+    Color,
+)
 from discord.ext.commands import Cog, Context, command, is_owner
 import youtube_dl
 
@@ -46,8 +54,8 @@ def get_queue(ctx: Context) -> Service:
     return guilds[ctx.guild.id]["Queue"]
 
 
-def get_is_repeat(ctx: Context) -> Service:
-    return guilds[ctx.guild.id]["is_repeat"]
+def get_repeat_mode(ctx: Context) -> Service:
+    return guilds[ctx.guild.id]["repeat_mode"]
 
 
 async def join(interaction: Interaction):
@@ -69,6 +77,7 @@ async def join(interaction: Interaction):
     return client_voice
 
 
+# ---------------------------------------------
 async def add_track(interaction: Interaction, song: Song):
     client_voice: VoiceClient = interaction.guild.voice_client
     user_voice: VoiceClient = interaction.user.voice
@@ -115,7 +124,6 @@ async def save(interaction: Interaction, music: Song):
     return True
 
 
-# ---------------------------------------------
 def play(interaction: Context, voice: VoiceClient, song: Song):
     queue = guilds[interaction.guild.id]["Queue"]
 
@@ -145,23 +153,81 @@ def play(interaction: Context, voice: VoiceClient, song: Song):
 
 def next(interaction: Interaction, voice: VoiceClient):
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
-    is_repeat: bool = guilds[interaction.guild.id]["is_repeat"]
+    repeat_mode: bool = guilds[interaction.guild.id]["repeat_mode"]
 
     if len(queue) == 0:
         # await ctx.channel.send(ANSWERS.ON_END)
         return
 
-    if is_repeat == "OFF":
-        queue.pop()
-    elif is_repeat == "ONE":
+    if repeat_mode == "OFF":
+        queue.pop(0)
+    elif repeat_mode == "ONE":
         pass
-    elif is_repeat == "ALL":
+    elif repeat_mode == "ALL":
         queue.append(queue.pop(0))
     guilds.get(interaction.guild.id, {})
+
+    if len(queue) == 0:
+        # await ctx.channel.send(ANSWERS.ON_END)
+        return
 
     song: Song = queue[0]
     # await ctx.channel.send(ANSWERS.__f(f"Сейчас играет: {song}"))
     play(interaction, voice, song)
+
+
+# ---------------------------------------------
+async def show_playlist(interaction: Interaction, playlist: Playlist):
+    if not await is_chat(interaction):
+        return
+    if not await is_registered(interaction):
+        return
+
+    queue: list[Song] = guilds[interaction.guild.id]["Queue"]
+    repeat_mode: str = guilds[interaction.guild.id]["repeat_mode"]
+
+    if len(queue) == 0:
+        await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
+    else:
+        queue_list = ""
+        for i, track in enumerate(queue, start=1):
+            queue_list += f"**{i})** {track}\n"
+        embed = Embed(
+            title="Список песен:",
+            url=None,
+            description=queue_list,
+            color=Color.blue(),
+        )
+        embed.set_footer(text=f"Повтор : {repeat_mode}")
+
+        await interaction.response.send_message(embed=embed)
+
+
+def play_playlist(interaction: Context, voice: VoiceClient, song: Song):
+    queue = guilds[interaction.guild.id]["Queue"]
+
+    if len(queue) != 0:
+        song = Song.safe(queue[0])
+        file_name = f"{song}.mp3"
+        file_path = os.path.join("Musics", file_name)
+
+        source_path: str = ""
+        if os.path.isfile(file_path):
+            print(f"File found: {file_name}")
+            source_path = file_path
+        else:
+            print(f"File not found: {file_name}")
+            source_path = song.url
+
+        client_voice: VoiceClient = voice
+        client_voice.play(
+            FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
+            after=lambda _: next(interaction, client_voice),
+        )
+
+        if os.path.isfile(file_path):
+            get_service(interaction.guild.id).save_song(song)
+        return song
 
 
 # ---------------------------------------------
@@ -180,7 +246,7 @@ class Voice(Cog):
     async def set_service(self, guild_id: int, service: Service):
         guilds.setdefault(guild_id, {})
         guilds[guild_id]["Service"] = service
-        guilds[guild_id]["is_repeat"] = "OFF"
+        guilds[guild_id]["repeat_mode"] = "OFF"
         guilds[guild_id]["Queue"] = []
 
     @command()
@@ -192,23 +258,23 @@ class Voice(Cog):
 
     @app_commands.command(
         name="search",
-        description="Search a song by title/artist",
+        description="Search a song by query: title/artist",
     )
-    @app_commands.describe(text="Song title or artist")
-    async def _search(self, interaction: Interaction, text: str):
+    @app_commands.describe(query="Song title or artist")
+    async def _search(self, interaction: Interaction, query: str):
         if not await is_chat(interaction):
             return
         if not await is_registered(interaction):
             return
 
         await interaction.response.send_message(ANSWERS.ON_SEARCH)
-        songs = get_service(interaction).search_songs_by_text(text)
+        songs = get_service(interaction).search_songs_by_text(query)
 
         if len(songs) == 0:
-            await interaction.channel.send(ANSWERS.ON_TRACKS_NOT_FOUND)
+            await interaction.channel.send(ANSWERS.ON_NOT_FOUND)
             return
 
-        await interaction.channel.send(ANSWERS.ON_TRACKS_FOUND)
+        await interaction.channel.send(ANSWERS.ON_FOUND)
 
         for song in songs:
             view: ViewForSong = ViewForSong(song)
@@ -227,6 +293,42 @@ class Voice(Cog):
             )
 
     @app_commands.command(
+        name="search-playlist",
+        description="Search a playlist by query: title/artist",
+    )
+    @app_commands.describe(query="Playlist title or artist")
+    async def _search(self, interaction: Interaction, query: str):
+        if not await is_chat(interaction):
+            return
+        if not await is_registered(interaction):
+            return
+
+        await interaction.response.send_message(ANSWERS.ON_SEARCH)
+        playlists = get_service(interaction).search_playlists_by_text(query)
+
+        if len(playlists) == 0:
+            await interaction.channel.send(ANSWERS.ON_NOT_FOUND)
+            return
+
+        await interaction.channel.send(ANSWERS.ON_FOUND)
+
+        for playlist in playlists:
+            view: ViewForPlaylist = ViewForPlaylist(playlist)
+
+            view.on_show = show_playlist
+            view.on_play = play_playlist
+
+            view.message = await interaction.channel.send(
+                f"""```
+Название: {playlist.title}
+Исполнитель: {playlist.artist}
+Длительность: {playlist.duration}
+```
+""",
+                view=view,
+            )
+
+    @app_commands.command(
         name="list",
         description="Show list/queue of songs",
     )
@@ -237,14 +339,23 @@ class Voice(Cog):
             return
 
         queue: list[Song] = guilds[interaction.guild.id]["Queue"]
+        repeat_mode: str = guilds[interaction.guild.id]["repeat_mode"]
 
         if len(queue) == 0:
             await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
         else:
             queue_list = ""
             for i, track in enumerate(queue, start=1):
-                queue_list += f"{i}. {track}\n"
-            await interaction.response.send_message(f"```> Список:\n{queue_list}```")
+                queue_list += f"**{i})** {track}\n"
+            embed = Embed(
+                title="Список песен:",
+                url=None,
+                description=queue_list,
+                color=Color.blue(),
+            )
+            embed.set_footer(text=f"Повтор : {repeat_mode}")
+
+            await interaction.response.send_message(embed=embed)
 
     @app_commands.command(
         name="skip",
@@ -287,9 +398,9 @@ class Voice(Cog):
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
                 if mode in RepeatMode:
-                    guilds[interaction.guild.id]["is_repeat"] = mode
+                    guilds[interaction.guild.id]["repeat_mode"] = mode
                     await interaction.response.send_message(
-                        f"```Repeat mode: {mode}```"
+                        f"```Repeat mode: > {mode}```"
                     )
                 else:
                     await interaction.response.send_message(ANSWERS.INVALID_REPEAT_TYPE)
@@ -314,7 +425,7 @@ class Voice(Cog):
         if client_voice and client_voice.is_connected():
             if user_voice and client_voice.channel.id == user_voice.channel.id:
                 guilds[interaction.guild.id]["Queue"] = []
-                guilds[interaction.guild.id]["is_repeat"] = "OFF"
+                guilds[interaction.guild.id]["repeat_mode"] = "OFF"
 
                 await interaction.response.send_message(ANSWERS.ON_QUIT)
                 await client_voice.disconnect()

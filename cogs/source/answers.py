@@ -12,8 +12,8 @@ class ANSWERS:
     GREETING: str = __f("Привет, семпай ~")
     ON_JOIN: str = __f("Зашла к тебе в комнату... к тебе...")
     ON_SEARCH: str = __f("Поиск песен по запросу...")
-    ON_TRACKS_FOUND: str = __f("Результат(ы) поиска:")
-    ON_TRACKS_NOT_FOUND: str = __f("Ничего не найдено ._.")
+    ON_FOUND: str = __f("Результат(ы) поиска:")
+    ON_NOT_FOUND: str = __f("Ничего не найдено ._.")
 
     ON_ADDING_TRACK: str = __f("Трек добавлен")
     ON_LIST_EMPTY: str = __f("Список пуст...")
