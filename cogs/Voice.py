@@ -23,48 +23,68 @@ from .source.answers import ANSWERS
 
 from .elements.Views import ViewForSong, ViewForPlaylist
 
-RepeatMode: list[str] = ["OFF", "ONE", "ALL"]
 
 FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
 
+# dict of guild with settings
 guilds: dict[int:dict] = {}
+RepeatMode: list[str] = ["OFF", "ONE", "ALL"]
 
 
-async def is_chat(interaction: Interaction):
+# getter of Service
+def get_service(interaction: Interaction) -> Service or None:
+    return guilds.get(interaction.guild.id, {}).get("Service", None)
+
+
+########
+# CHECKS
+
+
+# check: is guild?
+async def is_guild(interaction: Interaction):
     channel = interaction.channel
-    return channel != None
-
-
-async def is_registered(ctx: Interaction) -> bool:
-    if guilds.get(ctx.guild.id, {}).get("Service", None) != None:
+    if channel != None:
         return True
     else:
-        await ctx.response.send_message(ANSWERS.NO_SERVICE)
+        await interaction.response.send_message(ANSWERS.IS_NOT_GUILD)
         return False
 
 
-def get_service(ctx: Context) -> Service or None:
-    return guilds.get(ctx.guild.id, {}).get("Service", None)
+# check: is service registered?
+async def is_registered(interaction: Interaction) -> bool:
+    if get_service(interaction) != None:
+        return True
+    else:
+        await interaction.response.send_message(ANSWERS.NO_SERVICE)
+        return False
 
 
-def get_queue(ctx: Context) -> Service:
-    return guilds[ctx.guild.id]["Queue"]
+# check: is user in voice?
+async def is_user_in_voice(interaction: Interaction) -> bool:
+    user_voice: VoiceClient = interaction.user.voice
+    if user_voice != None:
+        return True
+    else:
+        await interaction.response.send_message(ANSWERS.NO_VOICE_USER)
+        return False
 
 
-def get_repeat_mode(ctx: Context) -> Service:
-    return guilds[ctx.guild.id]["repeat_mode"]
+# check: is ready to use?
+async def is_ready(interaction: Interaction) -> bool:
+    return (
+        await is_guild(interaction)
+        and await is_registered(interaction)
+        and await is_user_in_voice(interaction)
+    )
 
 
 async def join(interaction: Interaction):
-    user_voice: VoiceClient = interaction.user.voice
-
-    if not user_voice:
-        await interaction.channel.send(ANSWERS.NO_VOICE_USER)
+    if not await is_ready(interaction):
         return
-
+    user_voice: VoiceClient = interaction.user.voice
     client_voice: VoiceClient = interaction.guild.voice_client
     if client_voice and client_voice.is_connected():
         if client_voice.channel.id == user_voice.channel.id:
@@ -79,6 +99,8 @@ async def join(interaction: Interaction):
 
 # ---------------------------------------------
 async def add_track(interaction: Interaction, song: Song):
+    if not await is_ready(interaction):
+        return False
     client_voice: VoiceClient = interaction.guild.voice_client
     user_voice: VoiceClient = interaction.user.voice
 
@@ -124,11 +146,12 @@ async def save(interaction: Interaction, music: Song):
     return True
 
 
-def play(interaction: Context, voice: VoiceClient, song: Song):
+def play(interaction: Interaction, voice: VoiceClient, song: Song):
     queue = guilds[interaction.guild.id]["Queue"]
 
     if len(queue) != 0:
-        song = Song.safe(queue[0])
+        song = queue[0]
+        song.to_safe()
         file_name = f"{song}.mp3"
         file_path = os.path.join("Musics", file_name)
 
@@ -178,8 +201,7 @@ def next(interaction: Interaction, voice: VoiceClient):
 
 # ---------------------------------------------
 async def show_playlist(interaction: Interaction, playlist: Playlist):
-    print(playlist.to_dict())
-    if not await is_chat(interaction):
+    if not await is_guild(interaction):
         return False
     if not await is_registered(interaction):
         return False
@@ -255,7 +277,7 @@ class Voice(Cog):
     @command()
     @is_owner()
     async def services(self, ctx: Context):
-        if not await is_chat(ctx):
+        if not await is_guild(ctx):
             return
         await ctx.send(guilds)
 
@@ -265,9 +287,7 @@ class Voice(Cog):
     )
     @app_commands.describe(query="Song title or artist")
     async def _search(self, interaction: Interaction, query: str):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         await interaction.response.send_message(ANSWERS.ON_SEARCH)
@@ -301,9 +321,7 @@ class Voice(Cog):
     )
     @app_commands.describe(query="Playlist title or artist")
     async def _search_playlist(self, interaction: Interaction, query: str):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         await interaction.response.send_message(ANSWERS.ON_SEARCH)
@@ -336,9 +354,7 @@ class Voice(Cog):
         description="Show list/queue of songs",
     )
     async def _list(self, interaction: Interaction):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         queue: list[Song] = guilds[interaction.guild.id]["Queue"]
@@ -365,9 +381,7 @@ class Voice(Cog):
         description="Skip current song",
     )
     async def _skip(self, interaction: Interaction):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         client_voice: VoiceClient = interaction.guild.voice_client
@@ -390,9 +404,7 @@ class Voice(Cog):
     async def _repeat(
         self, interaction: Interaction, mode: Literal["OFF", "ONE", "ALL"]
     ):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         client_voice: VoiceClient = interaction.guild.voice_client
@@ -417,9 +429,7 @@ class Voice(Cog):
         description="Makes bot to quit/leave the channel",
     )
     async def _quit(self, interaction: Interaction):
-        if not await is_chat(interaction):
-            return
-        if not await is_registered(interaction):
+        if not await is_ready(interaction):
             return
 
         client_voice: VoiceClient = interaction.guild.voice_client

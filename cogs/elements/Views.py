@@ -1,4 +1,4 @@
-from discord import Interaction, ButtonStyle
+from discord import Interaction, Message, ButtonStyle
 from discord.ui import View, Button, button
 from discord.ext.commands import Context
 
@@ -26,7 +26,7 @@ def change(button: Button, result: int):
 
 
 class ViewForSong(View):
-    # message = None
+    message: Message = None
 
     on_play = None
     on_save = None
@@ -38,7 +38,8 @@ class ViewForSong(View):
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
-        await self.message.edit(view=self)
+        # await self.message.edit(view=self)
+        await self.message.delete()
 
     @button(label="Play song", style=ButtonStyle.primary, emoji="🎵")
     async def play_button(self, interaction: Interaction, button: Button):
@@ -75,7 +76,7 @@ class ViewForSong(View):
 
 
 class ViewForPlaylist(View):
-    message = None
+    message: Message = None
 
     on_show = None
     on_play = None
@@ -87,7 +88,8 @@ class ViewForPlaylist(View):
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
-        await self.message.edit(view=self)
+        # await self.message.edit(view=self)
+        await self.message.delete()
 
     @button(label="Show songs", style=ButtonStyle.primary, emoji="🔍")
     async def show_button(self, interaction: Interaction, button: Button):
