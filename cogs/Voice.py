@@ -23,11 +23,12 @@ from .source.answers import ANSWERS
 
 from .elements.Views import ViewForSong, ViewForPlaylist
 
-
+# CONSTS
 FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
+QUEUE_LIMIT = 25
 
 # dict of guild with settings
 guilds: dict[int:dict] = {}
@@ -85,12 +86,16 @@ async def is_ready(interaction: Interaction) -> bool:
 # Handler funcs:
 # --------------
 # 1. songs's
+# 1.1. on_play
 async def add_track(interaction: Interaction, song: Song):
+    # main checks
     if not await is_ready(interaction):
         return False
+
     client_voice: VoiceClient = interaction.guild.voice_client
     user_voice: VoiceClient = interaction.user.voice
 
+    # other checks
     if client_voice and client_voice.is_connected():
         if user_voice and client_voice.channel.id == user_voice.channel.id:
             pass
@@ -102,9 +107,10 @@ async def add_track(interaction: Interaction, song: Song):
         if not client_voice:
             return False
 
+    # main logic
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     length: int = len(queue)
-    if length < 50:
+    if length < QUEUE_LIMIT:
         guilds[interaction.guild.id]["Queue"].append(song)
         await interaction.channel.send(
             f"```> Трек добавлен в очередь! ({length + 1}/15)```"
@@ -114,14 +120,11 @@ async def add_track(interaction: Interaction, song: Song):
         return False
 
     if length == 0:
-        title = play(interaction, client_voice, song)
-        if title:
-            await interaction.channel.send(ANSWERS.ON_ADDING_TRACK)
-        else:
-            await interaction.channel.send(ANSWERS.ON_END)
+        play(interaction, client_voice, song)
     return True
 
 
+# 1.2. on_save
 async def save(interaction: Interaction, music: Song):
     async with aiohttp.ClientSession() as session:
         async with session.get(music.url) as resp:
@@ -133,8 +136,11 @@ async def save(interaction: Interaction, music: Song):
     return True
 
 
+# --------------
 # 2. playlsits's
+# 2.1. on_show
 async def show_playlist(interaction: Interaction, playlist: Playlist):
+    # main checks
     if not await is_ready(interaction):
         return None
 
@@ -161,34 +167,43 @@ async def show_playlist(interaction: Interaction, playlist: Playlist):
         return embed
 
 
-def add_playlist(interaction: Interaction, playlist: Playlist):
-    queue = guilds[interaction.guild.id]["Queue"]
+# 2.2. on_play
+async def add_playlist(interaction: Interaction, playlist: Playlist):
+    #  main checks
+    if not await is_ready(interaction):
+        return False
 
-    if len(queue) != 0:
-        playlist = Song.safe(queue[0])
-        file_name = f"{playlist}.mp3"
-        file_path = os.path.join("Musics", file_name)
+    client_voice: VoiceClient = interaction.guild.voice_client
+    user_voice: VoiceClient = interaction.user.voice
 
-        source_path: str = ""
-        if os.path.isfile(file_path):
-            print(f"File found: {file_name}")
-            source_path = file_path
+    # other checks
+    if client_voice and client_voice.is_connected():
+        if user_voice and client_voice.channel.id == user_voice.channel.id:
+            pass
         else:
-            print(f"File not found: {file_name}")
-            source_path = playlist.url
+            await interaction.channel.send(ANSWERS.JUST_BUSY)
+            return False
+    else:
+        client_voice = await join(interaction)
+        if not client_voice:
+            return False
 
-        client_voice: VoiceClient = voice
-        client_voice.play(
-            FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
-            after=lambda _: next(interaction, client_voice),
-        )
+    # main logic
+    service: Service = get_service(interaction)
+    songs: list[Song] = service.get_songs_by_playlist(playlist, 25)
+    queue: list[Song] = guilds[interaction.guild.id]["Queue"]
+    for song in songs:
+        queue.append(song)
+    length: int = len(songs)
+    length2: int = len(queue)
+    await interaction.channel.send(f"```> Треки ({length}) добавлены в очередь!```")
 
-        if os.path.isfile(file_path):
-            get_service(interaction.guild.id).save_song(playlist)
-        return playlist
+    if length == length2:
+        play(interaction, client_voice, queue[0])
+    return True
 
 
-################
+#############
 # Main funcs:
 async def join(interaction: Interaction):
     # base checks
