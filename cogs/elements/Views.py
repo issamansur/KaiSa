@@ -38,8 +38,8 @@ class ViewForSong(View):
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
-        # await self.message.edit(view=self)
-        await self.message.delete()
+        await self.message.edit(view=self)
+        # await self.message.delete()
 
     @button(label="Play song", style=ButtonStyle.primary, emoji="🎵")
     async def play_button(self, interaction: Interaction, button: Button):

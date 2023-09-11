@@ -28,7 +28,7 @@ FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
-QUEUE_LIMIT = 25
+QUEUE_LIMIT = 15
 
 # dict of guild with settings
 guilds: dict[int:dict] = {}
@@ -145,7 +145,7 @@ async def show_playlist(interaction: Interaction, playlist: Playlist):
         return None
 
     service: Service = get_service(interaction)
-    songs: list[Song] = service.get_songs_by_playlist(playlist, 25)
+    songs: list[Song] = service.get_songs_by_playlist(playlist, 15)
 
     if len(songs) == 0:
         await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
@@ -190,7 +190,7 @@ async def add_playlist(interaction: Interaction, playlist: Playlist):
 
     # main logic
     service: Service = get_service(interaction)
-    songs: list[Song] = service.get_songs_by_playlist(playlist, 25)
+    songs: list[Song] = service.get_songs_by_playlist(playlist, 15)
     queue: list[Song] = guilds[interaction.guild.id]["Queue"]
     for song in songs:
         queue.append(song)
@@ -231,26 +231,30 @@ def play(interaction: Interaction, voice: VoiceClient, song: Song):
 
     if len(queue) != 0:
         song = queue[0]
+        source_path = song.url
+        """
+        # if need to save
+
         song.to_safe()
         file_name = f"{song}.mp3"
         file_path = os.path.join("Musics", file_name)
 
-        source_path: str = ""
         if os.path.isfile(file_path):
             print(f"File found: {file_name}")
             source_path = file_path
         else:
             print(f"File not found: {file_name}")
-            source_path = song.url
+        """
 
         client_voice: VoiceClient = voice
         client_voice.play(
             FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
             after=lambda _: next(interaction, client_voice),
         )
-
-        if os.path.isfile(file_path):
+        """
+        if not os.path.isfile(file_path):
             get_service(interaction.guild.id).save_song(song)
+        """
         return song
 
 
@@ -321,7 +325,7 @@ class Voice(Cog):
             await interaction.channel.send(ANSWERS.ON_NOT_FOUND)
             return
 
-        await interaction.channel.send(ANSWERS.ON_FOUND)
+        # await interaction.channel.send(ANSWERS.ON_FOUND)
 
         for song in songs:
             view: ViewForSong = ViewForSong(song)
@@ -341,7 +345,7 @@ class Voice(Cog):
 
     @app_commands.command(
         name="search-playlist",
-        description="Search a playlist by query: title/artist",
+        description="Search user's playlist by query: title/artist",
     )
     @app_commands.describe(query="Playlist title or artist")
     async def _search_playlist(self, interaction: Interaction, query: str):
@@ -349,13 +353,49 @@ class Voice(Cog):
             return
 
         await interaction.response.send_message(ANSWERS.ON_SEARCH)
-        playlists = get_service(interaction).search_playlists_by_text(query)
+        playlists = get_service(interaction).search_playlists_by_text(query, 3)
 
         if len(playlists) == 0:
             await interaction.channel.send(ANSWERS.ON_NOT_FOUND)
             return
 
-        await interaction.channel.send(ANSWERS.ON_FOUND)
+        # await interaction.channel.send(ANSWERS.ON_FOUND)
+
+        for playlist in playlists:
+            view: ViewForPlaylist = ViewForPlaylist(playlist)
+
+            view.on_show = show_playlist
+            view.on_play = add_playlist
+
+            embed = Embed(
+                title=playlist.title,
+                description=f"{playlist.description}\n**{playlist.count}** песен",
+                color=Color.dark_purple(),
+            )
+            embed.set_thumbnail(url=playlist.photo)
+
+            view.message = await interaction.channel.send(
+                embed=embed,
+                view=view,
+            )
+
+    @app_commands.command(
+        name="search-album",
+        description="Search album of artist by query: title/artist",
+    )
+    @app_commands.describe(query="Album title or artist")
+    async def _search_album(self, interaction: Interaction, query: str):
+        if not await is_ready(interaction):
+            return
+
+        await interaction.response.send_message(ANSWERS.ON_SEARCH)
+        playlists = get_service(interaction).search_albums_by_text(query, 3)
+
+        if len(playlists) == 0:
+            await interaction.channel.send(ANSWERS.ON_NOT_FOUND)
+            return
+
+        # await interaction.channel.send(ANSWERS.ON_FOUND)
 
         for playlist in playlists:
             view: ViewForPlaylist = ViewForPlaylist(playlist)
