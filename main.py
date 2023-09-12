@@ -20,7 +20,7 @@ from discord import (
 )
 
 from discord.ext import commands
-from youtube_dl import YoutubeDL
+# from youtube_dl import YoutubeDL
 
 from cogs.source.actions import *
 from cogs.source.answers import ANSWERS
@@ -122,11 +122,12 @@ async def on_message(message: Message):
     if str(words[0]).lower() in actions:
         try:
             member = await client.fetch_user(words[1][2:-1])
+            res = f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
             await channel.send(
-                content=f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
+                content=res
             )
-        except Exception as e:
-            await channel.send(f"Something went wrong: {e}")
+        except Exception as exception:
+            await channel.send(f"Something went wrong: {exception}")
         return
 
     await client.process_commands(message)
@@ -136,4 +137,3 @@ async def on_message(message: Message):
 
 
 client.run(token=TOKEN)
-# os.system(f"start cmd /k python main.py")

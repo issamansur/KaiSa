@@ -1,5 +1,4 @@
 import io
-import os
 from typing import Literal
 import aiohttp
 
@@ -13,7 +12,7 @@ from discord import (
     Color,
 )
 from discord.ext.commands import Cog, Context, command, is_owner
-import youtube_dl
+# import youtube_dl
 
 from vkpymusic import Service, Song, Playlist
 
@@ -47,7 +46,7 @@ def get_service(interaction: Interaction) -> Service or None:
 # check: is guild?
 async def is_guild(interaction: Interaction):
     channel = interaction.channel
-    if channel != None:
+    if channel is not None:
         return True
     else:
         await interaction.response.send_message(ANSWERS.IS_NOT_GUILD)
@@ -56,7 +55,7 @@ async def is_guild(interaction: Interaction):
 
 # check: is service registered?
 async def is_registered(interaction: Interaction) -> bool:
-    if get_service(interaction) != None:
+    if get_service(interaction) is not None:
         return True
     else:
         await interaction.response.send_message(ANSWERS.NO_SERVICE)
@@ -66,7 +65,7 @@ async def is_registered(interaction: Interaction) -> bool:
 # check: is user in voice?
 async def is_user_in_voice(interaction: Interaction) -> bool:
     user_voice: VoiceClient = interaction.user.voice
-    if user_voice != None:
+    if user_voice is not None:
         return True
     else:
         await interaction.response.send_message(ANSWERS.NO_VOICE_USER)
