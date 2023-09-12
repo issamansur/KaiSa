@@ -22,8 +22,6 @@ from discord import (
 
 from discord.ext import commands
 
-# from youtube_dl import YoutubeDL
-
 from cogs.source.actions import *
 from cogs.source.answers import ANSWERS
 from Settings import *
@@ -57,7 +55,7 @@ class SlashBot(commands.Bot):
         self.tree.on_error = on_tree_error
 
 
-client = SlashBot(command_prefix="!", intents=Intents.all())
+client = SlashBot(command_prefix="/", intents=Intents.all())
 
 # -------------------------------------------------------
 activities = [
