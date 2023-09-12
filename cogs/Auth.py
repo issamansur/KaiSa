@@ -25,8 +25,8 @@ FFMPEG_OPTIONS = {
 }
 
 
-async def is_dm(ctx: Interaction):
-    return ctx.guild is None
+async def is_dm(interaction: Interaction):
+    return interaction.guild is None
 
 
 # ---------------------------------------------
@@ -38,7 +38,6 @@ class Auth(Cog):
 
     #############
     ### /register
-
     @guild_only()
     @has_permissions(administrator=True)
     @app_commands.command(

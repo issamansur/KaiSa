@@ -3,6 +3,7 @@ import datetime
 
 import asyncio
 import aiohttp
+from vkpymusic import Service
 
 from discord import (
     app_commands,
@@ -39,9 +40,10 @@ class SlashBot(commands.Bot):
 
     async def setup_hook(self):
         # set cogs
-        await client.add_cog(Administration(client))
-        await client.add_cog(Voice(client))
-        await client.add_cog(Auth(client))
+        await self.add_cog
+        await self.add_cog(Administration(client))
+        await self.add_cog(Voice(client))
+        await self.add_cog(Auth(client))
         # sync all
         """
         for server in client.guilds:
@@ -75,6 +77,14 @@ async def on_ready():
         status=Status.online,
         activity=activities[0],
     )
+
+    # set services
+    voice: Voice = client.get_cog("Voice")
+    for guild in client.guilds:
+        service: Service = Service.parse_config(rf"tokens/{guild.id}.ini")
+        voice.set_service(guild.id, service)
+        print(f"Guild {guild.name} connected!")
+
 
 
 @commands.is_owner()
