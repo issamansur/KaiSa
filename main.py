@@ -21,6 +21,7 @@ from discord import (
 )
 
 from discord.ext import commands
+
 # from youtube_dl import YoutubeDL
 
 from cogs.source.actions import *
@@ -40,7 +41,6 @@ class SlashBot(commands.Bot):
 
     async def setup_hook(self):
         # set cogs
-        await self.add_cog
         await self.add_cog(Administration(client))
         await self.add_cog(Voice(client))
         await self.add_cog(Auth(client))
@@ -82,23 +82,17 @@ async def on_ready():
     voice: Voice = client.get_cog("Voice")
     for guild in client.guilds:
         service: Service = Service.parse_config(rf"tokens/{guild.id}.ini")
-        voice.set_service(guild.id, service)
-        print(f"Guild {guild.name} connected!")
+        if service is not None:
+            await voice.set_service(guild.id, service)
+            print(f"\033[92mGuild {guild.name} connected!\033[0m")
 
 
-
-@commands.is_owner()
-@client.tree.command(
-    name="test", description="Test to see if slash commands are working"
-)
-async def _test(interaction):
-    await interaction.response.send_message("Test")
-
-
+"""
 @app_commands.checks.cooldown(1, 30)
 @client.tree.command(name="ping", description="Check bot")
 async def _ping(interaction: Interaction):
     await interaction.response.send_message("Pong!")
+"""
 
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
@@ -133,9 +127,7 @@ async def on_message(message: Message):
         try:
             member = await client.fetch_user(words[1][2:-1])
             res = f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
-            await channel.send(
-                content=res
-            )
+            await channel.send(content=res)
         except Exception as exception:
             await channel.send(f"Something went wrong: {exception}")
         return
