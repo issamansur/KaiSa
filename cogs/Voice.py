@@ -12,15 +12,10 @@ from discord import (
     Color,
 )
 from discord.ext.commands import Cog, Context, command, is_owner
-# import youtube_dl
-
+from components import ViewForSong, ViewForPlaylist
+from source import ANSWERS
 from vkpymusic import Service, Song, Playlist
 
-from Settings import *
-from .source.actions import *
-from .source.answers import ANSWERS
-
-from .elements.Views import ViewForSong, ViewForPlaylist
 
 # CONSTS
 FFMPEG_OPTIONS = {
@@ -512,41 +507,3 @@ class Voice(Cog):
                 await interaction.response.send_message(ANSWERS.JUST_BUSY)
         else:
             await interaction.response.send_message(ANSWERS.NO_VOICE_BOT)
-
-    # YOUTUBE
-    """
-    @command(
-        pass_context=True,
-        brief="This will play audio from youtube url",
-        aliases=["youtube"],
-    )
-    async def yt(self, ctx: Context, url: str):
-        if not await is_chat(ctx):
-            return
-        client_voice: VoiceClient = ctx.guild.voice_client
-        user_voice = VoiceClient = ctx.user.voice
-
-        if client_voice and client_voice.is_connected():
-            if user_voice and client_voice.channel.id == user_voice.channel.id:
-                if client_voice.is_playing():
-                    return  # !!!
-                else:
-                    pass
-            else:
-                await ctx.send(ANSWERS.JUST_BUSY)
-        else:
-            client_voice = await join(ctx)
-            if not client_voice:
-                return False
-
-        YDL_OPTIONS = {"format": "bestaudio", "noplaylist": "True"}
-
-        with youtube_dl(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
-        URL = info["formats"][0]["url"]
-        client_voice.play(FFmpegPCMAudio(source=URL, **FFMPEG_OPTIONS))
-        client_voice.is_playing()
-
-        client_voice.volume = 100
-        await ctx.send(ANSWERS.ON_PLAY)
-    """

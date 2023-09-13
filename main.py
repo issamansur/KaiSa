@@ -1,13 +1,5 @@
-import os
-import datetime
-
-import asyncio
-import aiohttp
-from vkpymusic import Service
-
 from discord import (
     app_commands,
-    utils,
     Client,
     Intents,
     Interaction,
@@ -19,18 +11,16 @@ from discord import (
     Game,
     Streaming,
 )
-
 from discord.ext import commands
 
-from cogs.source.actions import *
-from cogs.source.answers import ANSWERS
-from Settings import *
+from source import actions, formatting
+from Settings import TOKEN, ADMIN_USER_ID
 
-from cogs.Administration import Administration
-from cogs.Voice import Voice
-from cogs.Auth import Auth
+from cogs import Administration
+from cogs import Voice
+from cogs import Auth
 
-SYNC_GUILD = Object(id=DEFAULT_GUILD_ID)
+from vkpymusic import Service
 
 
 class SlashBot(commands.Bot):
@@ -42,15 +32,16 @@ class SlashBot(commands.Bot):
         await self.add_cog(Administration(client))
         await self.add_cog(Voice(client))
         await self.add_cog(Auth(client))
+
         # sync all
-        """
-        for server in client.guilds:
-            self.tree.copy_global_to(guild=Object(id=server.id))
-            await self.tree.sync(guild=Object(id=server.id))
-        """
+        await self.tree.sync(guild=None)
         # sync main
+        """
+        SYNC_GUILD = Object(id=DEFAULT_GUILD_ID)
         self.tree.copy_global_to(guild=SYNC_GUILD)
         await self.tree.sync(guild=SYNC_GUILD)
+        """
+
         # on tree error
         self.tree.on_error = on_tree_error
 
@@ -85,12 +76,15 @@ async def on_ready():
             print(f"\033[92mGuild {guild.name} connected!\033[0m")
 
 
-"""
 @app_commands.checks.cooldown(1, 30)
-@client.tree.command(name="ping", description="Check bot")
+@client.tree.command(name="ping", description="Checks bot")
 async def _ping(interaction: Interaction):
     await interaction.response.send_message("Pong!")
-"""
+
+
+@client.tree.command(name="help", description="Shows availible commands")
+async def _ping(interaction: Interaction):
+    await interaction.response.send_message("Pong!")
 
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):

@@ -12,12 +12,8 @@ from discord.ext.commands import (
     Bot,
     Context,
 )
-
-from vkpymusic import TokenReceiverAsync, Service, Song
-
-from .Voice import Voice
-
-from .source.answers import *
+from cogs import Voice
+from vkpymusic import TokenReceiverAsync, Service
 
 
 FFMPEG_OPTIONS = {
@@ -43,7 +39,7 @@ class Auth(Cog):
     @has_permissions(administrator=True)
     @app_commands.command(
         name="register",
-        description="Register service for audio.",
+        description="Register service for audio",
     )
     async def _register(self, interaction: Interaction):
         if await is_dm(interaction):
@@ -61,10 +57,11 @@ class Auth(Cog):
 
         service: Service = Service.parse_config(rf"tokens/{guild_id}.ini")
         if service is None:
+            com_str = f"```/auth guild_id:{guild_id} login: password:```"
             await interaction.user.send(
                 "Приветики, для авторизации используется ВК.\n"
                 + "Токен не найден, необходима авторизация. Введите:\n"
-                + f"```/auth {guild_id} [Логин/Телефон] [Пароль]```"
+                + com_str
             )
         else:
             await interaction.user.send(
@@ -81,7 +78,7 @@ class Auth(Cog):
     @has_permissions(administrator=True)
     @app_commands.command(
         name="unregister",
-        description="Unregister service for audio.",
+        description="Unregister service for audio",
     )
     async def _unregister(self, interaction: Interaction):
         if await is_dm(interaction):
@@ -128,7 +125,7 @@ class Auth(Cog):
 
     # handler_2 (2fa SMS OR VK code)
     async def on_2fa_handler(self, interaction: Interaction) -> str:
-        await interaction.channel.send("Введите код из СМС:\n```/code [код]```")
+        await interaction.channel.send("Введите код из СМС:\n```!code [код]```")
 
         msg = await self.bot.wait_for(
             "message",
@@ -136,7 +133,7 @@ class Auth(Cog):
                 lambda mes: mes.channel.id == interaction.channel.id
                 and mes.content.split()[0] == "!code"
             ),
-            timeout=60,
+            timeout=120,
         )
         code: str = msg.content.split(" ")[-1]
         return code
@@ -158,13 +155,13 @@ class Auth(Cog):
     @dm_only()
     @app_commands.command(
         name="auth",
-        description="Auth in VK. Need for audio service.",
+        description="Auth in VK. Need for audio service",
     )
     @app_commands.describe(guild_id="ID of the registering guild")
     @app_commands.describe(login="VK username or number")
     @app_commands.describe(password="VK password")
     async def _auth(
-        self, interaction: Interaction, guild_id: int, login: str, password: str
+        self, interaction: Interaction, guild_id: str, login: str, password: str
     ):
         # check on dm
         if not await is_dm(interaction):
@@ -177,6 +174,11 @@ class Auth(Cog):
             await interaction.response.send_message("Уже зарегистрированы!")
             return
 
+        try:
+            guild_id = int(guild_id)
+        except Exception as e:
+            await interaction.response.send_message("Ошибка параметра!")
+            return
         # main auth
         await interaction.response.send_message("Авторизация...")
 

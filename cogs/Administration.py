@@ -1,13 +1,9 @@
+import datetime
+import aiohttp
 from discord import app_commands, utils, Interaction, Object, User, Member, Embed, Color
 from discord.ext.commands import Bot, Cog, Context, command, is_owner, dm_only
 
-from Settings import *
-from .source.actions import *
-from .source.answers import *
-
-import datetime
-
-import aiohttp
+from Settings import ADMIN_USER_ID, DEFAULT_ROLE_ID
 
 
 class Administration(Cog):
@@ -48,6 +44,8 @@ class Administration(Cog):
 
     # ------------------------------------------------------------
 
+
+"""
     async def timeout_user(self, user_id: int, guild_id: int, until):
         headers = {"Authorization": f"Bot {self.client.http.token}"}
         url = f"https://discord.com/api/v9/guilds/{guild_id}/members/{user_id}"
@@ -111,3 +109,4 @@ class Administration(Cog):
             await ctx.send(f"Successfully ban user {member}.")
         except Exception as e:
             await ctx.send(f"Something went wrong: {e}")
+"""
