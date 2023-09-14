@@ -1,5 +1,6 @@
 # Kai'Sa [K/DA]
 ## Содержание:
+0. [Пригласить бота на сервер](https://discord.com/oauth2/authorize?client_id=1147834135918956577&permissions=0&scope=bot%20applications.commands)
 1. [Вступление](#intro)
 2. [Начало работы](#start)
 3. [Команды бота](#commands)
