@@ -5,6 +5,7 @@ from discord import (
     Interaction,
     Object,
     Message,
+    Embed,
     Status,
     ActivityType,
     Activity,
@@ -84,7 +85,32 @@ async def _ping(interaction: Interaction):
 
 @client.tree.command(name="help", description="Shows availible commands")
 async def _ping(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
+    embed = Embed
+'''
+* /ping: Проверить доступность бота. 
+* /help: Получить справку о доступных командах. 
+* /report: Отправить отчет о проблеме или баге. 
+
+## Управление аккаунтом пользователя
+
+* /register: Зарегистрировать аккаунт пользователя. 
+* /unregister: Удалить аккаунт пользователя. 
+* /auth \[id гильдии\] \[логин/телефон\] \[пароль\]: Аутентифицироваться. 
+
+## Поиск и воспроизведение музыки
+
+* /search \[название/автор песни\]: Найти и воспроизвести песню. 
+* /search-album \[название плейлиста (исполнителя)\]: Найти альбом или исполнителя. ✅
+* /search-playlist \[название плейлиста (пользователя)\]: Найти плейлист пользователя. ✅
+
+## Управление воспроизведением музыки
+
+* /list: Показать список воспроизведения. 
+* /repeat \[OFF | ONE | ALL\]: Установить режим повтора. 
+* /skip: Пропустить текущую композицию. 
+* /quit: Завершить воспроизведение музыки. 
+'''
+#    await interaction.response.send_message("Pong!")
 
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
