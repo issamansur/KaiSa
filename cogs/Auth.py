@@ -95,7 +95,7 @@ class Auth(Cog):
             return
 
         Service.del_config(rf"tokens/{guild_id}.ini")
-        voice.set_service(guild_id, None)
+        await voice.set_service(guild_id, None)
         await interaction.response.send_message(
             content="Сервис успешно отвязан!", ephemeral=True
         )
