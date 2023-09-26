@@ -17,6 +17,7 @@ from discord.ext import commands
 from vkpymusic import Service
 
 from source import actions, formatting
+from components import embed
 from Settings import TOKEN, ADMIN_USER_ID
 
 from cogs import Administration
@@ -91,15 +92,15 @@ async def _help(interaction: Interaction):
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CommandOnCooldown):
-        return await interaction.response.send_message(
+        return await interaction.channel.send(
             f"Command is currently on cooldown! Try again in **{error.retry_after:.2f}** seconds!"
         )
 
     elif isinstance(error, app_commands.CommandNotFound):
-        return await interaction.response.send_message(error);
+        return await interaction.channel.send(error)
 
     else:
-        await interaction.response.send_message(error);
+        return await interaction.channel.send(error)
         raise error
 
 
