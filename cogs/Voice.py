@@ -223,33 +223,37 @@ async def join(interaction: Interaction):
 def play(interaction: Interaction, voice: VoiceClient, song: Song):
     queue = guilds[interaction.guild.id]["Queue"]
 
-    if len(queue) != 0:
-        song = queue[0]
-        source_path = song.url
-        """
-        # if need to save
+    if len(queue) == 0:
+        return
 
-        song.to_safe()
-        file_name = f"{song}.mp3"
-        file_path = os.path.join("Musics", file_name)
+    song = queue[0]
+    source_path = song.url
+    """
+    # if need to save
 
-        if os.path.isfile(file_path):
-            print(f"File found: {file_name}")
-            source_path = file_path
-        else:
-            print(f"File not found: {file_name}")
-        """
+    song.to_safe()
+    file_name = f"{song}.mp3"
+    file_path = os.path.join("Musics", file_name)
 
+    if os.path.isfile(file_path):
+        print(f"File found: {file_name}")
+        source_path = file_path
+    else:
+        print(f"File not found: {file_name}")
+    """
+    try:
         client_voice: VoiceClient = voice
         client_voice.play(
             FFmpegPCMAudio(source=source_path, **FFMPEG_OPTIONS),
             after=lambda _: next(interaction, client_voice),
         )
-        """
-        if not os.path.isfile(file_path):
-            get_service(interaction.guild.id).save_song(song)
-        """
-        return song
+    except Exception as ex:
+       print(ex)
+    '''
+    if not os.path.isfile(file_path):
+        get_service(interaction.guild.id).save_song(song)
+    '''
+    return song
 
 
 def next(interaction: Interaction, voice: VoiceClient):

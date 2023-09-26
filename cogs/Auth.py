@@ -1,19 +1,18 @@
 import io
-import os
 import aiohttp
 
-from discord import app_commands, Interaction, User, File
+from discord import app_commands, Interaction, File
 from discord.ext.commands import (
-    command,
     has_permissions,
     guild_only,
     dm_only,
     Cog,
     Bot,
-    Context,
 )
-from cogs import Voice
+
 from vkpymusic import TokenReceiverAsync, Service
+
+from cogs import Voice
 
 
 FFMPEG_OPTIONS = {
@@ -51,7 +50,8 @@ class Auth(Cog):
 
         if await voice.is_registered(guild_id):
             await interaction.response.send_message(
-                content="Уже зарегистрированы!", ephemeral=True
+                content="Уже зарегистрированы!",
+                ephemeral=True
             )
             return
 
@@ -103,7 +103,7 @@ class Auth(Cog):
     ########################
     ### 4 handlers and /auth
     # handler_1 (captcha image)
-    async def on_captcha_handler(self, interaction: Interaction, url: str) -> str:
+    async def _on_captcha_handler(self, interaction: Interaction, url: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 img = await resp.read()
@@ -124,7 +124,7 @@ class Auth(Cog):
         return captcha_key
 
     # handler_2 (2fa SMS OR VK code)
-    async def on_2fa_handler(self, interaction: Interaction) -> str:
+    async def _on_2fa_handler(self, interaction: Interaction) -> str:
         await interaction.channel.send("Введите код из СМС:\n```!code [код]```")
 
         msg = await self.bot.wait_for(
@@ -139,15 +139,16 @@ class Auth(Cog):
         return code
 
     # handler_3 (invalid login or password)
-    async def on_invalid_client_handler(self, interaction: Interaction):
-        await interaction.channel.send_message(
+    async def _on_invalid_client_handler(self, interaction: Interaction):
+        await interaction.channel.send(
             "Неверный логин или пароль, попробуйте ещё раз..."
         )
 
     # handler_4 (unexpected error)
-    async def on_critical_error_handler(self, interaction: Interaction, obj: any):
+    async def _on_critical_error_handler(self, interaction: Interaction, obj: any):
         await interaction.channel.send(f"Критическая ошибка!\n```{obj}```")
-        pleasure: str = "Пожалуйста, скопируйте текст ошибки и отправьте:\n```/report [текст ошибки]```"
+        pleasure: str = "Пожалуйста, скопируйте текст ошибки и отправьте:\n"
+        pleasure += "```/report [текст ошибки]```"
         await interaction.channel.send(pleasure)
 
     #######
@@ -176,7 +177,7 @@ class Auth(Cog):
 
         try:
             guild_id = int(guild_id)
-        except Exception as e:
+        except ValueError:
             await interaction.response.send_message("Ошибка параметра!")
             return
         # main auth
@@ -185,10 +186,10 @@ class Auth(Cog):
         token_receiver: TokenReceiverAsync = TokenReceiverAsync(login, password)
 
         if await token_receiver.auth(
-            on_captcha=lambda url: self.on_captcha_handler(interaction, url),
-            on_2fa=lambda: self.on_2fa_handler(interaction),
-            on_invalid_client=lambda: self.on_invalid_client_handler(interaction),
-            on_critical_error=lambda obj: self.on_critical_error_handler(
+            on_captcha=lambda url: self._on_captcha_handler(interaction, url),
+            on_2fa=lambda: self._on_2fa_handler(interaction),
+            on_invalid_client=lambda: self._on_invalid_client_handler(interaction),
+            on_critical_error=lambda obj: self._on_critical_error_handler(
                 interaction, obj
             ),
         ):

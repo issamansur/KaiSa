@@ -14,6 +14,8 @@ from discord import (
 )
 from discord.ext import commands
 
+from vkpymusic import Service
+
 from source import actions, formatting
 from Settings import TOKEN, ADMIN_USER_ID
 
@@ -21,7 +23,6 @@ from cogs import Administration
 from cogs import Voice
 from cogs import Auth
 
-from vkpymusic import Service
 
 
 class SlashBot(commands.Bot):
@@ -47,7 +48,7 @@ class SlashBot(commands.Bot):
         self.tree.on_error = on_tree_error
 
 
-client = SlashBot(command_prefix="/", intents=Intents.all())
+client = SlashBot(command_prefix="/", intents=Intents.default())
 
 # -------------------------------------------------------
 activities = [
@@ -84,33 +85,8 @@ async def _ping(interaction: Interaction):
 
 
 @client.tree.command(name="help", description="Shows availible commands")
-async def _ping(interaction: Interaction):
-    embed = Embed
-'''
-* /ping: Проверить доступность бота. 
-* /help: Получить справку о доступных командах. 
-* /report: Отправить отчет о проблеме или баге. 
-
-## Управление аккаунтом пользователя
-
-* /register: Зарегистрировать аккаунт пользователя. 
-* /unregister: Удалить аккаунт пользователя. 
-* /auth \[id гильдии\] \[логин/телефон\] \[пароль\]: Аутентифицироваться. 
-
-## Поиск и воспроизведение музыки
-
-* /search \[название/автор песни\]: Найти и воспроизвести песню. 
-* /search-album \[название плейлиста (исполнителя)\]: Найти альбом или исполнителя. ✅
-* /search-playlist \[название плейлиста (пользователя)\]: Найти плейлист пользователя. ✅
-
-## Управление воспроизведением музыки
-
-* /list: Показать список воспроизведения. 
-* /repeat \[OFF | ONE | ALL\]: Установить режим повтора. 
-* /skip: Пропустить текущую композицию. 
-* /quit: Завершить воспроизведение музыки. 
-'''
-#    await interaction.response.send_message("Pong!")
+async def _help(interaction: Interaction):
+    await interaction.response.send_message("Pong!")
 
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
@@ -120,9 +96,10 @@ async def on_tree_error(interaction: Interaction, error: app_commands.AppCommand
         )
 
     elif isinstance(error, app_commands.CommandNotFound):
-        print(error)
+        return await interaction.response.send_message(error);
 
     else:
+        await interaction.response.send_message(error);
         raise error
 
 
