@@ -1,6 +1,6 @@
 # Kai'Sa [K/DA]
 ## Содержание:
-0. [Пригласить бота на сервер](https://discord.com/oauth2/authorize?client_id=1147834135918956577&permissions=0&scope=bot%20applications.commands)
+0. [Пригласить бота на сервер](https://discord.com/api/oauth2/authorize?client_id=1147834135918956577&permissions=2150664192&scope=bot%20applications.commands)
 1. [Вступление](#intro)
 2. [Начало работы](#start)
 3. [Команды бота](#commands)
@@ -23,7 +23,7 @@
 
 ## Начало работы (пример от партнёра) <a name="start"></a>
 
-### 1. Пригласите бота [<b>по ссылке</b>](https://discord.com/api/oauth2/authorize?client_id=1147834135918956577&permissions=0&scope=bot%20applications.commands).
+### 1. Пригласите бота [<b>по ссылке</b>](https://discord.com/api/oauth2/authorize?client_id=1147834135918956577&permissions=2150664192&scope=bot%20applications.commands).
 ![invite](source/img/invite.png)
 
 ### 2. Пропишите `/register`. 
