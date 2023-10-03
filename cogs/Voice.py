@@ -39,32 +39,28 @@ def get_service(interaction: Interaction) -> Service or None:
 
 
 # check: is guild?
-async def is_guild(interaction: Interaction):
-    channel = interaction.channel
-    if channel is not None:
-        return True
-    else:
+async def is_guild(interaction: Interaction) -> bool:
+    if interaction.guild is None:
         await interaction.response.send_message(ANSWERS.IS_NOT_GUILD)
         return False
+    return True
 
 
 # check: is service registered?
 async def is_registered(interaction: Interaction) -> bool:
-    if get_service(interaction) is not None:
-        return True
-    else:
+    if get_service(interaction) is None:
         await interaction.response.send_message(ANSWERS.NO_SERVICE)
         return False
+    return True
 
 
 # check: is user in voice?
 async def is_user_in_voice(interaction: Interaction) -> bool:
     user_voice: VoiceClient = interaction.user.voice
-    if user_voice is not None:
-        return True
-    else:
+    if user_voice is None:
         await interaction.response.send_message(ANSWERS.NO_VOICE_USER)
         return False
+    return True
 
 
 # check: is ready to use?
@@ -141,7 +137,7 @@ async def show_playlist(interaction: Interaction, playlist: Playlist):
     service: Service = get_service(interaction)
     songs: list[Song] = service.get_songs_by_playlist(playlist, 15)
 
-    if len(songs) == 0:
+    if not songs:
         await interaction.response.send_message(ANSWERS.ON_LIST_EMPTY)
         return None
     else:
@@ -282,6 +278,10 @@ def next(interaction: Interaction, voice: VoiceClient):
 
 
 # ---------------------------------------------
+async def setup(bot):
+    await bot.add_cog(Voice(bot))
+
+
 class Voice(Cog):
     # ctor
     def __init__(self, bot):
@@ -300,8 +300,12 @@ class Voice(Cog):
         guilds[guild_id]["repeat_mode"] = "OFF"
         guilds[guild_id]["Queue"] = []
 
-    @command()
+
     @is_owner()
+    @app_commands.command(
+        name="services",
+        description="Search a song by query: title/artist",
+    )
     async def services(self, ctx: Context):
         if not await is_guild(ctx):
             return

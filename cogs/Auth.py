@@ -26,6 +26,10 @@ async def is_dm(interaction: Interaction):
 
 
 # ---------------------------------------------
+async def setup(bot):
+    await bot.add_cog(Auth(bot))
+
+
 class Auth(Cog):
     ###############
     ### constructor

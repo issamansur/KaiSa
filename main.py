@@ -25,6 +25,11 @@ from cogs import Voice
 from cogs import Auth
 
 
+initial_extensions = ['cogs.Administration', 'cogs.Auth', 'cogs.Voice']
+
+async def load_extensions():
+    for extension in initial_extensions:
+           await client.load_extension(extension)
 
 class SlashBot(commands.Bot):
     def __init__(self, *, command_prefix: str, intents: Intents):
@@ -32,12 +37,16 @@ class SlashBot(commands.Bot):
 
     async def setup_hook(self):
         # set cogs
+        '''
         await self.add_cog(Administration(client))
         await self.add_cog(Voice(client))
         await self.add_cog(Auth(client))
+        '''
+        await load_extensions()
 
         # sync all
         await self.tree.sync(guild=None)
+
         # sync main
         """
         SYNC_GUILD = Object(id=DEFAULT_GUILD_ID)
@@ -87,7 +96,7 @@ async def _ping(interaction: Interaction):
 
 @client.tree.command(name="help", description="Shows availible commands")
 async def _help(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
+    await interaction.response.send_message(embed=embed)
 
 
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
@@ -118,16 +127,16 @@ async def on_message(message: Message):
         await channel.send(f"<@{author.id}>, Владелец заблокировал функцию упоминания.")
         await message.delete()
         return
-
-    if str(words[0]).lower() in actions:
+    
+    if len(words) != 0 and words[0].lower() in actions:
         try:
             member = await client.fetch_user(words[1][2:-1])
             res = f"{author.display_name} {formatting(words[0])} {member.display_name} {' '.join(words[2:])}"
             await channel.send(content=res)
+
         except Exception as exception:
             await channel.send(f"Something went wrong: {exception}")
-        return
-
+    
     await client.process_commands(message)
 
 

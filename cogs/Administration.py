@@ -4,6 +4,10 @@ from discord.ext.commands import Bot, Cog
 from Settings import ADMIN_USER_ID, DEFAULT_ROLE_ID
 
 
+async def setup(bot: Bot):
+    await bot.add_cog(Administration(bot))
+
+
 class Administration(Cog):
     def __init__(self, bot):
         self.bot: Bot = bot
