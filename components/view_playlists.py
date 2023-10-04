@@ -1,7 +1,8 @@
 from discord import Interaction, Message, ButtonStyle, Embed
 from discord.ui import View, Button, button
-from .utils import change
 from vkpymusic import Playlist
+
+from utils import change
 
 
 class ViewForPlaylist(View):

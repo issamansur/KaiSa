@@ -1,6 +1,3 @@
-import io
-import aiohttp
-
 from discord import app_commands, Interaction, File
 from discord.ext.commands import (
     has_permissions,
@@ -12,7 +9,13 @@ from discord.ext.commands import (
 
 from vkpymusic import TokenReceiverAsync, Service
 
-from cogs import Voice
+from .voice import Voice
+from utils import (
+    on_captcha_handler,
+    on_2fa_handler,
+    on_invalid_client_handler,
+    on_critical_error_handler,
+)
 
 
 FFMPEG_OPTIONS = {
@@ -103,57 +106,7 @@ class Auth(Cog):
         await interaction.response.send_message(
             content="Сервис успешно отвязан!", ephemeral=True
         )
-
-    ########################
-    ### 4 handlers and /auth
-    # handler_1 (captcha image)
-    async def _on_captcha_handler(self, interaction: Interaction, url: str) -> str:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                img = await resp.read()
-                with io.BytesIO(img) as file:
-                    await interaction.channel.send(file=File(file, "captcha.png"))
-
-        await interaction.channel.send("Введите капчу:\n```!captcha [капча]```")
-
-        msg = await self.bot.wait_for(
-            "message",
-            check=(
-                lambda mes: mes.channel.id == interaction.channel.id
-                and mes.content.split()[0] == "!captcha"
-            ),
-            timeout=60,
-        )
-        captcha_key: str = msg.content.split(" ")[-1]
-        return captcha_key
-
-    # handler_2 (2fa SMS OR VK code)
-    async def _on_2fa_handler(self, interaction: Interaction) -> str:
-        await interaction.channel.send("Введите код из СМС:\n```!code [код]```")
-
-        msg = await self.bot.wait_for(
-            "message",
-            check=(
-                lambda mes: mes.channel.id == interaction.channel.id
-                and mes.content.split()[0] == "!code"
-            ),
-            timeout=120,
-        )
-        code: str = msg.content.split(" ")[-1]
-        return code
-
-    # handler_3 (invalid login or password)
-    async def _on_invalid_client_handler(self, interaction: Interaction):
-        await interaction.channel.send(
-            "Неверный логин или пароль, попробуйте ещё раз..."
-        )
-
-    # handler_4 (unexpected error)
-    async def _on_critical_error_handler(self, interaction: Interaction, obj: any):
-        await interaction.channel.send(f"Критическая ошибка!\n```{obj}```")
-        pleasure: str = "Пожалуйста, скопируйте текст ошибки и отправьте:\n"
-        pleasure += "```/report [текст ошибки]```"
-        await interaction.channel.send(pleasure)
+    
 
     #######
     # /auth
@@ -190,10 +143,10 @@ class Auth(Cog):
         token_receiver: TokenReceiverAsync = TokenReceiverAsync(login, password)
 
         if await token_receiver.auth(
-            on_captcha=lambda url: self._on_captcha_handler(interaction, url),
-            on_2fa=lambda: self._on_2fa_handler(interaction),
-            on_invalid_client=lambda: self._on_invalid_client_handler(interaction),
-            on_critical_error=lambda obj: self._on_critical_error_handler(
+            on_captcha=lambda url: on_captcha_handler(self.bot, interaction, url),
+            on_2fa=lambda: on_2fa_handler(interaction),
+            on_invalid_client=lambda: on_invalid_client_handler(interaction),
+            on_critical_error=lambda obj: on_critical_error_handler(
                 interaction, obj
             ),
         ):
