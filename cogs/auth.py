@@ -10,13 +10,13 @@ from discord.ext.commands import (
 from vkpymusic import TokenReceiverAsync, Service
 
 from .voice import Voice
+
 from utils import (
     on_captcha_handler,
     on_2fa_handler,
     on_invalid_client_handler,
     on_critical_error_handler,
 )
-
 
 FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
