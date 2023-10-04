@@ -1,8 +1,8 @@
 from discord import Interaction, Message, ButtonStyle
 from discord.ui import View, Button, button
-from .utils import change
 from vkpymusic import Song
 
+from utils import change
 
 class ViewForSong(View):
     message: Message = None

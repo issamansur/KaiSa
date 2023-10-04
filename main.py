@@ -25,7 +25,7 @@ from cogs import Voice
 from cogs import Auth
 
 
-initial_extensions = ['cogs.Administration', 'cogs.Auth', 'cogs.Voice']
+initial_extensions = ['cogs.administration', 'cogs.auth', 'cogs.voice']
 
 async def load_extensions():
     for extension in initial_extensions:

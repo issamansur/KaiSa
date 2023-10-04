@@ -1,3 +1,3 @@
-from .Administration import Administration
-from .Auth import Auth
-from .Voice import Voice
+from .administration import Administration
+from .auth import Auth
+from .voice import Voice

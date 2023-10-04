@@ -12,7 +12,7 @@ from discord.ext.commands import (
 
 from vkpymusic import TokenReceiverAsync, Service
 
-from cogs import Voice
+from .voice import Voice
 
 
 FFMPEG_OPTIONS = {
