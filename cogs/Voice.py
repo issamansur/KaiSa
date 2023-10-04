@@ -11,7 +11,7 @@ from discord import (
     File,
     Color,
 )
-from discord.ext.commands import Cog, Context, command, is_owner
+from discord.ext.commands import Bot, Cog, Context, command, is_owner
 from components import ViewForSong, ViewForPlaylist
 from source import ANSWERS
 from vkpymusic import Service, Song, Playlist
@@ -284,8 +284,24 @@ async def setup(bot):
 
 class Voice(Cog):
     # ctor
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
+
+
+    @is_owner()
+    @app_commands.command(
+        name="services",
+        description="Return list of services",
+    )
+    async def services(self, interaction: Interaction):
+        res = ''
+        for i, guild_id in enumerate(guilds, start=1):
+            guild = await self.bot.fetch_guild(guild_id)
+            guild_name = guild.name
+            res += f"{i}) {guild_name}\n"
+
+        await interaction.response.send_message("Список сервисов: \n" + res)
+
 
     # for Auth.py
     async def is_registered(self, guild_id: int) -> bool:
@@ -300,16 +316,6 @@ class Voice(Cog):
         guilds[guild_id]["repeat_mode"] = "OFF"
         guilds[guild_id]["Queue"] = []
 
-
-    @is_owner()
-    @app_commands.command(
-        name="services",
-        description="Search a song by query: title/artist",
-    )
-    async def services(self, ctx: Context):
-        if not await is_guild(ctx):
-            return
-        await ctx.send(guilds)
 
     @app_commands.command(
         name="search",

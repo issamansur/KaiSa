@@ -29,7 +29,7 @@ initial_extensions = ['cogs.Administration', 'cogs.Auth', 'cogs.Voice']
 
 async def load_extensions():
     for extension in initial_extensions:
-           await client.load_extension(extension)
+        await client.load_extension(extension)
 
 class SlashBot(commands.Bot):
     def __init__(self, *, command_prefix: str, intents: Intents):
@@ -88,29 +88,20 @@ async def on_ready():
             print(f"\033[92mGuild {guild.name} connected!\033[0m")
 
 
-@app_commands.checks.cooldown(1, 30)
-@client.tree.command(name="ping", description="Checks bot")
-async def _ping(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
-
-
-@client.tree.command(name="help", description="Shows availible commands")
-async def _help(interaction: Interaction):
-    await interaction.response.send_message(embed=embed)
-
-
 async def on_tree_error(interaction: Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CommandOnCooldown):
-        return await interaction.channel.send(
+        await interaction.channel.send(
             f"Command is currently on cooldown! Try again in **{error.retry_after:.2f}** seconds!"
         )
 
     elif isinstance(error, app_commands.CommandNotFound):
-        return await interaction.channel.send(error)
+        await interaction.channel.send(error)
 
     else:
-        return await interaction.channel.send(error)
-        raise error
+        await interaction.channel.send(error)
+    
+    if not interaction.response.is_done():
+        await interaction.response.send_message(content="Something went wrong!", ephemeral=True)
 
 
 @client.event
@@ -139,6 +130,11 @@ async def on_message(message: Message):
     
     await client.process_commands(message)
 
+@client.tree.command(name="reload", description="Reloads bot")
+async def _reload(interaction: Interaction):
+    for extension in initial_extensions:
+        await client.reload_extension(extension)
+    await interaction.response.send_message("Reloaded!")
 
 # --------------------------------------------------------------------------
 

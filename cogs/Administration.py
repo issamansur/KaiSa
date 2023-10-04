@@ -1,5 +1,7 @@
 from discord import app_commands, Interaction, User, Embed, Color
-from discord.ext.commands import Bot, Cog
+from discord.ext.commands import Bot, Cog, is_owner, Context
+
+from components import embed
 
 from Settings import ADMIN_USER_ID, DEFAULT_ROLE_ID
 
@@ -11,6 +13,18 @@ async def setup(bot: Bot):
 class Administration(Cog):
     def __init__(self, bot):
         self.bot: Bot = bot
+        
+
+    @app_commands.checks.cooldown(1, 30)
+    @app_commands.command(name="ping", description="Checks bot")
+    async def _ping(self, interaction: Interaction):
+        await interaction.response.send_message("Pong!")
+
+
+    @app_commands.command(name="help", description="Shows availible commands")
+    async def _help(self, interaction: Interaction):
+        await interaction.response.send_message(embed=embed)
+
 
     @app_commands.command(name="report", description="Send report to bot's owner")
     @app_commands.describe(info="Additional info about problem")
