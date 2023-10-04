@@ -32,8 +32,9 @@ async def load_extensions():
         await client.load_extension(extension)
 
 class SlashBot(commands.Bot):
-    def __init__(self, *, command_prefix: str, intents: Intents):
-        super().__init__(command_prefix=command_prefix, intents=intents)
+    def __init__(self, intents: Intents):
+        super().__init__(command_prefix=".", intents=intents)
+        # self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
         # set cogs
@@ -58,7 +59,7 @@ class SlashBot(commands.Bot):
         self.tree.on_error = on_tree_error
 
 
-client = SlashBot(command_prefix="/", intents=Intents.default())
+client = SlashBot(intents=Intents.default())
 
 # -------------------------------------------------------
 activities = [

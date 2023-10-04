@@ -1,11 +1,11 @@
 import io
 import aiohttp
 
-from discord import Interaction, File
+from discord import Client, Interaction, File
 from discord.ext.commands import Bot
 
 # handler_1 (captcha image)
-async def on_captcha_handler(bot: Bot, interaction: Interaction, url: str) -> str:
+async def on_captcha_handler(bot: Client, interaction: Interaction, url: str) -> str:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             img = await resp.read()
@@ -26,7 +26,7 @@ async def on_captcha_handler(bot: Bot, interaction: Interaction, url: str) -> st
     return captcha_key
 
 # handler_2 (2fa SMS OR VK code)
-async def on_2fa_handler(bot: Bot, interaction: Interaction) -> str:
+async def on_2fa_handler(bot: Client, interaction: Interaction) -> str:
     await interaction.channel.send("Введите код из СМС:\n```!code [код]```")
 
     msg = await bot.wait_for(

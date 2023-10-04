@@ -1,11 +1,5 @@
-from discord import app_commands, Interaction, File
-from discord.ext.commands import (
-    has_permissions,
-    guild_only,
-    dm_only,
-    Cog,
-    Bot,
-)
+from discord import Client, app_commands, Interaction
+from discord.ext.commands import Cog
 
 from vkpymusic import TokenReceiverAsync, Service
 
@@ -18,31 +12,25 @@ from utils import (
     on_critical_error_handler,
 )
 
-FFMPEG_OPTIONS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
-
 
 async def is_dm(interaction: Interaction):
     return interaction.guild is None
 
 
 # ---------------------------------------------
-async def setup(bot):
-    await bot.add_cog(Auth(bot))
+async def setup(client):
+    await client.add_cog(Auth(client))
 
 
 class Auth(Cog):
     ###############
     ### constructor
-    def __init__(self, bot):
-        self.bot: Bot = bot
+    def __init__(self, client):
+        self.client: Client = client
 
     #############
     ### /register
-    @guild_only()
-    @has_permissions(administrator=True)
+    @app_commands.guild_only()
     @app_commands.command(
         name="register",
         description="Register service for audio",
@@ -53,7 +41,7 @@ class Auth(Cog):
             return
 
         guild_id: int = interaction.guild.id
-        voice: Voice = self.bot.get_cog("Voice")
+        voice: Voice = self.client.get_cog("Voice")
 
         if await voice.is_registered(guild_id):
             await interaction.response.send_message(
@@ -81,8 +69,7 @@ class Auth(Cog):
 
     ###############
     ### /unregister
-    @guild_only()
-    @has_permissions(administrator=True)
+    @app_commands.guild_only()
     @app_commands.command(
         name="unregister",
         description="Unregister service for audio",
@@ -93,7 +80,7 @@ class Auth(Cog):
             return
 
         guild_id: int = interaction.guild.id
-        voice: Voice = self.bot.get_cog("Voice")
+        voice: Voice = self.client.get_cog("Voice")
 
         if not await voice.is_registered(guild_id):
             await interaction.response.send_message(
@@ -110,7 +97,6 @@ class Auth(Cog):
 
     #######
     # /auth
-    @dm_only()
     @app_commands.command(
         name="auth",
         description="Auth in VK. Need for audio service",
@@ -127,7 +113,7 @@ class Auth(Cog):
             return
 
         # check on registered
-        voice: Voice = self.bot.get_cog("Voice")
+        voice: Voice = self.client.get_cog("Voice")
         if await voice.is_registered(guild_id):
             await interaction.response.send_message("Уже зарегистрированы!")
             return
@@ -143,7 +129,7 @@ class Auth(Cog):
         token_receiver: TokenReceiverAsync = TokenReceiverAsync(login, password)
 
         if await token_receiver.auth(
-            on_captcha=lambda url: on_captcha_handler(self.bot, interaction, url),
+            on_captcha=lambda url: on_captcha_handler(self.client, interaction, url),
             on_2fa=lambda: on_2fa_handler(interaction),
             on_invalid_client=lambda: on_invalid_client_handler(interaction),
             on_critical_error=lambda obj: on_critical_error_handler(

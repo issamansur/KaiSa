@@ -3,6 +3,7 @@ from typing import Literal
 import aiohttp
 
 from discord import (
+    Client,
     app_commands,
     Interaction,
     VoiceClient,
@@ -11,7 +12,7 @@ from discord import (
     File,
     Color,
 )
-from discord.ext.commands import Bot, Cog, Context, command, is_owner
+from discord.ext.commands import Bot, Cog, is_owner
 from components import ViewForSong, ViewForPlaylist
 from source import ANSWERS
 from vkpymusic import Service, Song, Playlist
@@ -278,14 +279,14 @@ def next(interaction: Interaction, voice: VoiceClient):
 
 
 # ---------------------------------------------
-async def setup(bot):
-    await bot.add_cog(Voice(bot))
+async def setup(client):
+    await client.add_cog(Voice(client))
 
 
 class Voice(Cog):
     # ctor
-    def __init__(self, bot: Bot):
-        self.bot = bot
+    def __init__(self, client: Client):
+        self.client: Client = client
 
 
     @is_owner()
@@ -296,7 +297,7 @@ class Voice(Cog):
     async def services(self, interaction: Interaction):
         res = ''
         for i, guild_id in enumerate(guilds, start=1):
-            guild = await self.bot.fetch_guild(guild_id)
+            guild = await self.client.fetch_guild(guild_id)
             guild_name = guild.name
             res += f"{i}) {guild_name}\n"
 
