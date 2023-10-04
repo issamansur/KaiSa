@@ -1,3 +1,3 @@
-from .ViewForSong import ViewForSong
-from .ViewForPlaylist import ViewForPlaylist
-from .EmbedForHelp import embed
+from .view_song import ViewForSong
+from .view_playlists import ViewForPlaylist
+from .embed_help import embed
