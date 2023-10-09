@@ -66,6 +66,10 @@ activities = [
     Game(
         name="League of Legends",
     ),
+    Activity(
+        type=ActivityType.watching,
+        name="Cyberpunk edge runners",
+    ),
     # ...
 ]
 
@@ -77,7 +81,7 @@ async def on_ready():
     # set status
     await client.change_presence(
         status=Status.online,
-        activity=activities[0],
+        activity=activities[1],
     )
 
     # set services

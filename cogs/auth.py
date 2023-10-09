@@ -130,7 +130,7 @@ class Auth(Cog):
 
         if await token_receiver.auth(
             on_captcha=lambda url: on_captcha_handler(self.client, interaction, url),
-            on_2fa=lambda: on_2fa_handler(interaction),
+            on_2fa=lambda: on_2fa_handler(self.client, interaction),
             on_invalid_client=lambda: on_invalid_client_handler(interaction),
             on_critical_error=lambda obj: on_critical_error_handler(
                 interaction, obj

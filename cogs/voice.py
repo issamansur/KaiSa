@@ -23,7 +23,7 @@ FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
-QUEUE_LIMIT = 15
+QUEUE_LIMIT = 30
 
 # dict of guild with settings
 guilds: dict[int:dict] = {}
