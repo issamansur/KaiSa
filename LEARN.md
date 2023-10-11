@@ -20,7 +20,10 @@ pip install -r requirements.txt
 ADMIN_USER_ID: int = <YOUR ID>
 TOKEN: str = "<YOUR TOKEN>"
 ```
-### 5. Start bot
+### 5. Install ffmpeg
+[CLICK TO VISIT OFFICIAL SITE](https://ffmpeg.org/download.html)
+
+### 6. Start bot
 ```
 python3 main.py
 ```
